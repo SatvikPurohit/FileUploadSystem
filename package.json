@@ -1,0 +1,27 @@
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "build:css": "tailwindcss -i ./app/globals.css -o ./public/output.css --minify"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.940.0",
+    "@aws-sdk/s3-request-presigner": "^3.940.0",
+    "@prisma/client": "^7.0.1",
+    "axios": "^1.13.2",
+    "bcrypt": "^6.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mime": "^4.1.0",
+    "prisma": "^7.0.1"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.10.1",
+    "autoprefixer": "^10.4.22",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3"
+  }
+}
