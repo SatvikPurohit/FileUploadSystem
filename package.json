@@ -1,4 +1,7 @@
 {
+  "name": "fileupload-local",
+  "version": "1.0.0",
+  "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -33,10 +36,8 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
-  "name": "fileuploadsystem",
-  "version": "1.0.0",
   "description": "Take home test",
-  "main": "postcss.config.js",
+  "main": "index.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/SatvikPurohit/FileUploadSystem.git"
