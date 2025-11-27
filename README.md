@@ -1,216 +1,214 @@
-# File Upload System
+# 📤 File Upload System
 
-A simple app where you can upload files, store them on your computer, and download them later. Built with Next.js, React, and Material-UI with a beautiful modern interface.
+A dead simple app to upload files, keep them on your machine, and grab them back whenever you need them. Built with Next.js, React, and Material-UI. Clean UI. No BS.
 
-## What does it do?
+## What's it do?
 
-- **Log in** with an email and password
-- **Upload files** — pick one or more files and they get saved to your computer
-- **See upload progress** — watch as files upload in real-time with progress bars and status
-- **Download files** — once uploaded, download them back whenever you want
-- **Manage uploads** — retry failed uploads or cancel ones you don't need
-- **Beautiful UI** — clean, modern interface with smooth animations and gradients
+- **Sign in** — quick login, done
+- **Upload files** — pick one or more, they get saved locally
+- **Watch progress** — real-time bars showing what's happening
+- **Download anytime** — grab your files back whenever
+- **Easy controls** — retry, cancel, download — all right there
+- **Looks nice** — modern interface with smooth animations
 
-That's it. Simple and straightforward.
+That's it, really.
 
-## How to set it up
+## Quick Start
 
-### Requirements
-- Node.js (v16 or newer)
+### Need these
+- Node.js (v16+)
 - npm or yarn
 
-### Steps
+### Get it running
 
-1. **Clone or download** the project
+1. **Download the code**
    ```bash
    cd FileUploadSystem
    ```
 
-2. **Install dependencies**
+2. **Install stuff**
    ```bash
    npm install
    ```
 
-3. **Set up the database**
+3. **Set up database**
    ```bash
    npx prisma migrate dev
    ```
-   This creates a local SQLite database and adds a demo user (email: `demo@local.test`, password: `Password123!`)
+   Creates a SQLite database with a demo user ready to go
 
-4. **Start the app**
+4. **Start it up**
    ```bash
    npm run dev
    ```
-   Open your browser and go to `http://localhost:3000`
+   Then go to `http://localhost:3000`
 
-5. **Log in** with the demo account:
+5. **Log in**
    - Email: `demo@local.test`
    - Password: `Password123!`
 
-## How it works
+Done. You're in.
 
-### Home Page
-- Shows two main options: "Upload Files" and "Login"
-- Each card is interactive with smooth hover animations
-- Demo credentials are displayed at the bottom
+## How to use it
 
-### Uploading files
-- Click the **"Upload Files"** button to go to the upload page
-- Click **"+ Pick Files"** and select one or more files
-- The app shows progress as files upload with a colored progress bar
-- Once done, you can download the file or try again if it fails
-- Click **"Stop All"** to cancel all pending uploads
+### Landing page
+- Two big buttons: Upload or Login
+- Nice cards with hover effects
+- Demo credentials at the bottom
 
-### Downloading files
-- On the upload page, find the file you uploaded (marked as "success")
-- Click the **"Download"** button next to the file
-- The file is downloaded to your computer
+### Upload your stuff
+- Click "Upload Files"
+- Hit "+ Pick Files" and choose what you want
+- Watch it upload with a progress bar
+- Once done, download it or try again if something broke
+- "Stop All" kills everything if you change your mind
 
-### Logging in
-- Click the **"Login"** button on the home page
-- Enter your email and password
-- The app saves your login in the browser, so you stay logged in
+### Get your files back
+- On the upload page, find what you uploaded
+- Click "Download" next to it
+- Done
 
-### Local storage
-- Files are saved in `public/uploads/` on your computer
-- Each user has their own folder with a timestamp, like: `public/uploads/userId/1234567890_filename.pdf`
-- Everything stays local — no cloud needed
-- Files are never deleted automatically
+### Stay logged in
+- You stay signed in while you're using it
+- Stored in your browser, so if you close and come back, you're still there
 
-## Project structure
+### Where do files go?
+- Saved in `public/uploads/` on your computer
+- Each user gets their own folder
+- Everything stays local — nothing goes to the cloud
+- Files stick around until you delete them
+
+## What's inside
 
 ```
 FileUploadSystem/
-├── app/                              # React components (Next.js App Router)
-│   ├── components/UploadQueue.tsx    # File upload queue UI with MUI
-│   ├── login/page.tsx                # Login page with form
-│   ├── health/page.tsx               # System health check page
-│   ├── page.tsx                      # Home/landing page
-│   ├── globals.css                   # Global styles
+├── app/                              
+│   ├── components/UploadQueue.tsx    # The upload UI
+│   ├── login/page.tsx                # Login form
+│   ├── health/page.tsx               # System status
+│   ├── page.tsx                      # Home page
+│   ├── globals.css                   # Base styles
 │   └── layout.tsx                    # App wrapper
 ├── pages/
 │   ├── api/
-│   │   ├── upload/server-upload.ts   # File upload handler (saves to public/uploads)
-│   │   ├── download.ts               # Download handler (serves files)
+│   │   ├── upload/server-upload.ts   # Handles uploads
+│   │   ├── download.ts               # Serves files
 │   │   └── auth/
-│   │       ├── login.ts              # Login endpoint
-│   │       ├── logout.ts             # Logout endpoint
-│   │       └── refresh.ts            # Token refresh endpoint
-│   ├── _app.tsx                      # Global app wrapper with MUI ThemeProvider
-│   └── upload.tsx                    # Upload page (alternative route)
+│   │       ├── login.ts              
+│   │       ├── logout.ts             
+│   │       └── refresh.ts            
+│   ├── _app.tsx                      # Global setup
+│   └── upload.tsx                    # Upload page
 ├── prisma/
-│   ├── schema.prisma                 # Database schema (User, Document models)
-│   └── dev.db                        # SQLite database file
+│   ├── schema.prisma                 # Database setup
+│   └── dev.db                        # The actual database
 ├── hooks/
-│   └── useServerUploadQueue.tsx       # Upload queue state management
+│   └── useServerUploadQueue.tsx       # Upload logic
 ├── lib/
-│   ├── auth.ts                       # JWT authentication helper
-│   └── prisma.ts                     # Prisma client instance
-├── scripts/
-│   └── seed-user.ts                  # Script to add demo users
-├── public/uploads/                   # Where uploaded files are stored
-└── types/
-    └── aws-sdk.d.ts                  # TypeScript type definitions
+│   ├── auth.ts                       # Login stuff
+│   └── prisma.ts                     # Database connection
+└── public/uploads/                   # Your files go here
 ```
 
-## Tech stack
+## What we're using
 
-- **Next.js 16** — web framework with React Server Components
-- **React 19** — UI library
-- **Material-UI (MUI) v5** — beautiful pre-built components
-- **Emotion** — CSS-in-JS styling engine (powers MUI)
-- **Prisma** — database ORM (uses SQLite)
-- **Axios** — HTTP client for API requests
-- **Formidable** — file parsing and multipart form handling
-- **JWT** — secure authentication tokens
+- **Next.js 16** — the web framework
+- **React 19** — makes the UI
+- **Material-UI** — pre-made components that look good
+- **Emotion** — makes the styling work
+- **Prisma** — talks to the database
+- **SQLite** — local database
+- **Axios** — sends requests
+- **Formidable** — handles file uploads
+- **JWT** — keeps you logged in securely
 
-## Environment variables
+## Customize it
 
-You can add a `.env.local` file if you want to customize things:
+Make a `.env.local` file if you want to change stuff:
 
 ```
 DATABASE_URL="file:./prisma/dev.db"
-JWT_SECRET="your-secret-key-here"
+JWT_SECRET="your-secret-here"
 ```
 
-By default, it uses a local SQLite database in the `prisma/` folder and a built-in secret key.
+By default it just works, but if you need custom settings, those are the ones.
 
-## Common tasks
+## Useful commands
 
-### Add a new user to the database
-Run the seed script:
+### Add more users
 ```bash
 npx prisma db seed
 ```
 
-### View and edit the database
+### See what's in the database
 ```bash
 npx prisma studio
 ```
-This opens a web UI where you can see and modify all data.
+Opens a web UI where you can see and change everything.
 
-### Reset the database
+### Start over
 ```bash
 rm prisma/dev.db
 npx prisma migrate dev
 ```
 
-### Build for production
+### Make it for real (production)
 ```bash
 npm run build
 npm start
 ```
 
-## Troubleshooting
+## Stuck? Check this
 
-**Files not uploading?**
-- Make sure you're logged in first
-- Check that the `public/uploads/` folder exists (it's created automatically)
-- Check your browser console for errors (press F12)
-- Make sure you have permission to write to the folder
+**Files won't upload?**
+- Make sure you're logged in
+- Check if `public/uploads/` exists (made automatically)
+- Open browser console (F12) and look for red errors
+- Make sure you can write to that folder
 
 **Can't log in?**
-- Use the demo account: `demo@local.test` / `Password123!`
-- Add your own user in Prisma Studio: `npx prisma studio`
+- Try: `demo@local.test` / `Password123!`
+- Or add your own user in Prisma Studio
 
-**Port 3000 already in use?**
-- The app will suggest another port automatically when you run `npm run dev`
-- Or stop the other program using port 3000
+**Port 3000 is taken?**
+- It'll try another port automatically
+- Or kill whatever's using 3000
 
-**Database errors?**
-- Try deleting the database and re-running migrations:
-  ```bash
-  rm prisma/dev.db
-  npx prisma migrate dev
-  ```
+**Database messed up?**
+- Delete `prisma/dev.db` and run `npx prisma migrate dev` again
+- This resets everything and makes a fresh database
 
-**UI not loading properly?**
-- Clear your browser cache (Ctrl+Shift+Delete or Cmd+Shift+Delete)
-- Hard refresh the page (Ctrl+Shift+R or Cmd+Shift+R)
+**Stuff looks broken?**
+- Clear cache: Ctrl+Shift+Delete (or Cmd+Shift+Delete on Mac)
+- Hard refresh: Ctrl+Shift+R (or Cmd+Shift+R on Mac)
 - Try a different browser
 
-## Development tips
+## API stuff (if you care)
 
-### View all API endpoints
-- `POST /api/auth/login` — login (body: { email, password })
-- `POST /api/auth/logout` — logout
-- `POST /api/auth/refresh` — refresh token
-- `POST /api/upload/server-upload` — upload files (multipart form)
-- `GET /api/download?docId=ID` — download a file
+```
+POST /api/auth/login
+POST /api/auth/logout
+POST /api/auth/refresh
+POST /api/upload/server-upload
+GET /api/download?docId=ID
+```
 
-### Enable Prisma debug logs
+## Debug mode
+
+See what's happening:
 ```bash
 DEBUG=prisma:* npm run dev
 ```
 
-### Watch for TypeScript errors
+Check TypeScript errors:
 ```bash
 npm run type-check
 ```
 
 ## License
 
-Feel free to use this for learning or as a starting point for your own project.
+Use it. Learn from it. Build on it. No restrictions.
+
 
 ## Questions?
 
