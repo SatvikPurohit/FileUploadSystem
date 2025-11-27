@@ -1,6 +1,6 @@
 # 📤 File Upload System
 
-A dead simple app to upload files, keep them on your machine, and grab them back whenever you need them. Built with Next.js, React, and Material-UI. Clean UI. No BS.
+A dead simple app to upload files, keep them on your machine, and grab them back whenever you need them. Built with Next.js, React, and Material-UI. No fancy stuff. Just works.
 
 **👉 [Quick Start Guide](QUICKSTART.md)** — Get running in 5 minutes!
 
@@ -8,10 +8,10 @@ A dead simple app to upload files, keep them on your machine, and grab them back
 
 - **Sign in** — quick login, done
 - **Upload files** — pick one or more, they get saved locally
-- **Watch progress** — real-time bars showing what's happening
+- **Watch progress** — simple progress bars showing what's happening
 - **Download anytime** — grab your files back whenever
 - **Easy controls** — retry, cancel, download — all right there
-- **Looks nice** — modern interface with smooth animations
+- **Works great** — clean, simple interface focused on getting the job done
 
 That's it, really.
 
@@ -53,17 +53,17 @@ Done. You're in.
 
 ## How to use it
 
-### Landing page
-- Two big buttons: Upload or Login
-- Nice cards with hover effects
-- Demo credentials at the bottom
+### Home page
+- Two buttons: Upload or Login
+- Demo credentials shown
+- Simple and clean
 
 ### Upload your stuff
 - Click "Upload Files"
-- Hit "+ Pick Files" and choose what you want
-- Watch it upload with a progress bar
+- Hit "Pick Files" and choose what you want
+- Watch the progress bar
 - Once done, download it or try again if something broke
-- "Stop All" kills everything if you change your mind
+- "Stop All" to cancel everything
 
 ### Get your files back
 - On the upload page, find what you uploaded
