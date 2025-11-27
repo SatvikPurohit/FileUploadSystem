@@ -1,11 +1,13 @@
 // pages/api/upload/server-upload.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { Upload } from "@aws-sdk/lib-storage";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+
 import fs from "fs";
 import formidable from "formidable";
 import prisma from "../../../lib/prisma";
 import { verifyAccess } from "../../../lib/auth";
+import { Upload } from "@aws-sdk/lib-storage";
+import { S3Client } from "@aws-sdk/client-s3";
+
 
 export const config = {
   api: { bodyParser: false } // we will parse via formidable
