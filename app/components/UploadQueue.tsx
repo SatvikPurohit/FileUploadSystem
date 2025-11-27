@@ -1,37 +1,153 @@
 // components/UploadQueue.tsx
 import React, { useRef } from "react";
-import { useServerUploadQueue, type UploadItem } from "../../hooks/useServerUploadQueue";
+import {
+  Button,
+  Card,
+  CardContent,
+  LinearProgress,
+  Box,
+  Stack,
+  Typography,
+  Chip,
+} from "@mui/material";
+import {
+  useServerUploadQueue,
+  type UploadItem,
+} from "../../hooks/useServerUploadQueue";
 
 export default function UploadQueue() {
-  const { items, enqueue, cancelOne, retry, cancelAll } = useServerUploadQueue(3);
+  const { items, enqueue, cancelOne, retry, cancelAll } =
+    useServerUploadQueue(3);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
-  return (
-    <div className="p-4">
-      <div className="mb-4">
-        <input ref={fileRef} type="file" multiple onChange={e => e.target.files && enqueue(e.target.files)} />
-        <button className="ml-2 px-3 py-1 bg-gray-700 text-white rounded" onClick={() => fileRef.current?.click()}>Select files</button>
-        <button className="ml-2 px-3 py-1 bg-red-600 text-white rounded" onClick={() => cancelAll()}>Cancel All</button>
-      </div>
+  const getStatusColor = (status: string): "default" | "primary" | "success" | "error" | "warning" => {
+    switch (status) {
+      case "success":
+        return "success";
+      case "failed":
+        return "error";
+      case "uploading":
+        return "primary";
+      default:
+        return "default";
+    }
+  };
 
-      <div className="space-y-3">
+  return (
+    <Box sx={{ p: 2 }}>
+      {/* Controls */}
+      <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+        <input
+          ref={fileRef}
+          type="file"
+          multiple
+          style={{ display: "none" }}
+          onChange={(e) => e.target.files && enqueue(e.target.files)}
+        />
+        <Button
+          variant="contained"
+          size="large"
+          onClick={() => fileRef.current?.click()}
+          sx={{
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            fontWeight: 600,
+            py: 1.5,
+          }}
+        >
+          + Pick Files
+        </Button>
+        <Button
+          variant="outlined"
+          color="error"
+          size="large"
+          onClick={() => cancelAll()}
+          sx={{ fontWeight: 600 }}
+        >
+          Stop All
+        </Button>
+      </Stack>
+
+      {/* Items list */}
+      <Stack spacing={2}>
+        {items.length === 0 && (
+          <Card elevation={0} sx={{ p: 3, textAlign: "center", background: "#f5f5f5" }}>
+            <Typography variant="body2" color="textSecondary">
+              No files yet. Pick some to get started!
+            </Typography>
+          </Card>
+        )}
         {items.map((it: UploadItem) => (
-          <div key={it.id} className="p-3 border rounded flex items-center justify-between">
-            <div style={{ width: "60%" }}>
-              <div className="font-medium">{it.file.name}</div>
-              <div className="text-sm text-gray-600">{it.status} • {it.progress}%</div>
-              <div className="w-full bg-gray-200 h-2 rounded mt-2">
-                <div style={{ width: `${it.progress}%` }} className="h-2 bg-green-500 rounded" />
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {it.status === "failed" && <button className="px-2 py-1 bg-yellow-500 rounded" onClick={() => retry(it.id)}>Retry</button>}
-              {it.status !== "success" && <button className="px-2 py-1 bg-red-500 rounded" onClick={() => cancelOne(it.id)}>Cancel</button>}
-              {it.status === "success" && <a className="px-2 py-1 bg-blue-600 text-white rounded" href={`/api/download?docId=${it.docId}`} >Download</a>}
-            </div>
-          </div>
+          <Card
+            key={it.id}
+            elevation={1}
+            sx={{
+              background: it.status === "success" ? "#f1f8e9" : "#fff",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+              },
+            }}
+          >
+            <CardContent sx={{ pb: 2 }}>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
+                <Box sx={{ flex: 1, mr: 2 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                      {it.file.name}
+                    </Typography>
+                    <Chip
+                      label={it.status}
+                      size="small"
+                      color={getStatusColor(it.status)}
+                      variant="outlined"
+                    />
+                  </Box>
+                  <Typography variant="caption" color="textSecondary">
+                    {it.progress}% • {(it.file.size / 1024 / 1024).toFixed(2)} MB
+                  </Typography>
+                </Box>
+                <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
+                  {it.status === "failed" && (
+                    <Button size="small" variant="outlined" onClick={() => retry(it.id)}>
+                      Retry
+                    </Button>
+                  )}
+                  {it.status !== "success" && (
+                    <Button size="small" color="error" variant="outlined" onClick={() => cancelOne(it.id)}>
+                      Cancel
+                    </Button>
+                  )}
+                  {it.status === "success" && (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      href={`/api/download?docId=${it.docId}`}
+                      component="a"
+                    >
+                      Download
+                    </Button>
+                  )}
+                </Stack>
+              </Box>
+              <Box sx={{ position: "relative" }}>
+                <LinearProgress
+                  variant="determinate"
+                  value={it.progress}
+                  sx={{
+                    height: 8,
+                    borderRadius: 4,
+                    background: "#e0e0e0",
+                    "& .MuiLinearProgress-bar": {
+                      background: "linear-gradient(90deg, #667eea 0%, #764ba2 100%)",
+                      borderRadius: 4,
+                    },
+                  }}
+                />
+              </Box>
+            </CardContent>
+          </Card>
         ))}
-      </div>
-    </div>
+      </Stack>
+    </Box>
   );
 }

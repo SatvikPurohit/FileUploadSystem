@@ -1,12 +1,8 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
+/* Material-UI base styles (replaces Tailwind) */
 html, body, #__next {
   height: 100%;
-}
-body {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
   margin: 0;
-  background: #f7fafc;
+  padding: 0;
 }
+
+/* MUI will handle the rest via CssBaseline and ThemeProvider */
