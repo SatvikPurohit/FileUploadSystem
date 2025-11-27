@@ -23,6 +23,6 @@ export const verifyTokenHash =  (hash:string | null, token: string) => {
  return bcrypt.compare(token, hash);   
 }
 
-export function verifyAccess(token: string) {
+export const verifyAccess = (token: string) =>{
   return jwt.verify(token, process.env.JWT_ACCESS_SECRET!);
 }
