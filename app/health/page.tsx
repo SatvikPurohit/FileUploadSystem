@@ -1,36 +1,42 @@
 // app/health/page.tsx
-import { Box, Container, Typography, Paper, Stack, Chip } from "@mui/material";
+import { Box, Container, Typography, Stack } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 export default function HealthPage() {
   return (
-    <Container maxWidth="sm" sx={{ py: 6 }}>
-      <Paper
-        elevation={0}
-        sx={{
-          p: 4,
-          textAlign: "center",
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-          color: "white",
-          borderRadius: 3,
-        }}
-      >
-        <CheckCircleIcon sx={{ fontSize: 64, mb: 2 }} />
-        <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
-          System is Running
-        </Typography>
-        <Typography variant="body2" sx={{ opacity: 0.9, mb: 3 }}>
-          All systems are operational and ready to go.
-        </Typography>
+    <Box sx={{ minHeight: "100vh", backgroundColor: "#f5f5f5", py: 4 }}>
+      <Container maxWidth="md">
+        <Box sx={{ textAlign: "center", mb: 4 }}>
+          <CheckCircleIcon sx={{ fontSize: 48, color: "green", mb: 2 }} />
+          <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
+            System Status
+          </Typography>
+          <Typography variant="body2" color="textSecondary">
+            Everything is running
+          </Typography>
+        </Box>
 
-        <Stack spacing={2} sx={{ mt: 3 }}>
-          <Box>
-            <Chip label="✓ Server" color="success" />
-            <Chip label="✓ Database" color="success" sx={{ ml: 1 }} />
-            <Chip label="✓ API" color="success" sx={{ ml: 1 }} />
+        <Stack spacing={1} sx={{ backgroundColor: "#fff", p: 3, borderRadius: 1, border: "1px solid #ddd" }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+            <Typography variant="body2">Server</Typography>
+            <Typography variant="body2" sx={{ color: "green", fontWeight: 600 }}>
+              ✓ OK
+            </Typography>
+          </Box>
+          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+            <Typography variant="body2">Database</Typography>
+            <Typography variant="body2" sx={{ color: "green", fontWeight: 600 }}>
+              ✓ OK
+            </Typography>
+          </Box>
+          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+            <Typography variant="body2">API</Typography>
+            <Typography variant="body2" sx={{ color: "green", fontWeight: 600 }}>
+              ✓ OK
+            </Typography>
           </Box>
         </Stack>
-      </Paper>
-    </Container>
+      </Container>
+    </Box>
   );
 }
