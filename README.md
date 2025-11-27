@@ -2,6 +2,8 @@
 
 A dead simple app to upload files, keep them on your machine, and grab them back whenever you need them. Built with Next.js, React, and Material-UI. Clean UI. No BS.
 
+**👉 [Quick Start Guide](QUICKSTART.md)** — Get running in 5 minutes!
+
 ## What's it do?
 
 - **Sign in** — quick login, done
