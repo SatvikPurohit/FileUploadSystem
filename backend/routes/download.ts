@@ -1,8 +1,8 @@
 // src/routes/download.ts
 import { ServerRoute } from '@hapi/hapi';
 import fs from 'fs';
-import prisma from './../prisma/prisma.client';
 import { validateAuth } from '../utils/auth';
+import prisma from '../prisma/prisma.client';
 
 const routes: ServerRoute[] = [
   {

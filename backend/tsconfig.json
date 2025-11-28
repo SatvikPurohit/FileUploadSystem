@@ -3,7 +3,7 @@
     "target": "ES2020",
     "module": "commonjs",
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
@@ -12,5 +12,11 @@
     "moduleResolution": "node",
     "types": ["node"]
   },
-  "include": ["src"]
+"include": [
+    "server.ts",
+    "routes/**/*.ts",
+    "prisma/**/*.ts",
+    "types/**/*.d.ts"
+  ],
+   "exclude": ["dist", "node_modules"]
 }

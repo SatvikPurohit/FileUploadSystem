@@ -10,7 +10,7 @@
     "build:backend": "cd backend && npm install && npm run prisma:generate",
     "build:frontend": "cd frontend && npm install && npm run build",
     "build": "npm run build:backend && npm run build:frontend",
-    "prisma:studio": "cd backend && prisma studio --schema=./prisma/schema.prisma",
+    "prisma:studio": "cd backend && npx prisma studio --schema=./prisma/schema.prisma",
     "seed": "cd backend && npm run seed"
   },
   "devDependencies": {
@@ -20,4 +20,3 @@
     "prisma": "^5.0.0"
   }
 }
-

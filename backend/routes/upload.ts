@@ -5,7 +5,7 @@ import path from 'path';
 import mkdirp from 'mkdirp';
 import { UPLOADS_DIR } from '../config';
 import { validateAuth } from '../utils/auth';
-import prisma from './../prisma/prisma.client';
+import prisma from '../prisma/prisma.client';
 
 const routes: ServerRoute[] = [
   {

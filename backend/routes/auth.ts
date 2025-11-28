@@ -2,6 +2,7 @@ import { ServerRoute } from '@hapi/hapi';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../config';
+import prisma from '../prisma/prisma.client';
 
 type LoginPayload = {
   email?: string;
