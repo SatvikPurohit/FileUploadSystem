@@ -22,7 +22,7 @@ npm run build:backend
 npm run seed
 
 # start both backend and frontend (requires concurrently)
-npm install -g concurrently  # if you don't have it
+npm install -g concurrently  
 npm run dev
 ```
 
@@ -55,7 +55,7 @@ npm install
 npm run dev               # start dev server on 5173
 ```
 
-Make sure backend is running on port 4000 when developing frontend.
+Backend should be running on port 4000 for frontend.
 
 ## Commands
 
@@ -88,23 +88,14 @@ Make sure backend is running on port 4000 when developing frontend.
 **Backend won't start**
 - Check port 4000 is free
 - Run `npm run seed` to create demo user
-- Check `.env` has DATABASE_URL set correctly
 
 **Frontend can't connect to backend**
 - Verify backend is running on 4000
 - Check `.env.local` has `VITE_API_URL=http://localhost:4000`
 - Check browser console for CORS errors (should be allowed by default)
 
-**Database messed up**
+**Database clean up**
 - Delete `prisma/dev.db` (or `backend/prisma/dev.db`)
 - Run `npm run build:backend` to recreate
 - Run `npm run seed` to add demo user
 
-## next steps
-
-- Add tests (Jest for backend, Vitest for frontend)
-- Add user registration
-- Add document metadata (file size, upload date, etc.)
-- Add file search/filtering
-- Add pagination
-- Deploy to production (Docker, cloud host, etc.)
