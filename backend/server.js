@@ -35,6 +35,10 @@ async function start() {
     routes: {
       cors: {
         origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:3000']
+      },
+      payload: {
+        parse: true,
+        allow: 'application/json'
       }
     }
   });
@@ -44,10 +48,7 @@ async function start() {
     method: 'POST',
     path: '/api/auth/login',
     handler: async (request, h) => {
-      const payload = request.payload || {};
-      // Hapi does not parse JSON automatically for raw content when using default config here; we'll accept JSON body
-      const body = typeof payload === 'object' ? payload : JSON.parse(request.payload);
-      const { email, password } = body;
+      const { email, password } = request.payload;
       if (!email || !password) return h.response({ message: 'Missing credentials' }).code(400);
       const user = await prisma.user.findUnique({ where: { email } });
       if (!user) return h.response({ message: 'Invalid credentials' }).code(401);
