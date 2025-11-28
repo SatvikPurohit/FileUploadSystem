@@ -18,6 +18,15 @@ export const UploadQueue = () => {
 
   const uploading = items.some(i => i.status === 'uploading');
 
+  // Normalize progress which might come as 0..1 or 0..100 or undefined/null.
+  const normalizeProgress = (p?: number) => {
+    if (p == null || Number.isNaN(p)) return 0;
+    // if it's a fraction <= 1 treat as 0..1 => convert to 0..100
+    if (p > 0 && p <= 1) return Math.round(p * 100);
+    // if > 1 assume 0..100 already, clamp it
+    return Math.max(0, Math.min(100, Math.round(p)));
+  };
+
   return (
     <Stack spacing={2}>
       <Box sx={{ display: 'flex', gap: 2 }}>
@@ -58,48 +67,68 @@ export const UploadQueue = () => {
       )}
 
       <Stack spacing={1.5}>
-        {items.map(item => (
-          <Box
-            key={item.id}
-            sx={{ p: 1.5, backgroundColor: '#fff', borderRadius: 1, border: '1px solid #ddd' }}
-          >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {item.filename}
-              </Typography>
-              <Typography
-                variant="caption"
-                sx={{
-                  color: item.status === 'error' ? 'red' : item.status === 'success' ? 'green' : 'inherit'
-                }}
-              >
-                {item.status.toUpperCase()}
-              </Typography>
-            </Box>
+        {items.map(item => {
+          const progressValue = normalizeProgress(item.progress);
 
-            {item.progress > 0 && item.status === 'uploading' && (
-              <LinearProgress variant="determinate" value={item.progress} sx={{ mb: 1 }} />
-            )}
+          return (
+            <Box
+              key={item.id}
+              sx={{ p: 1.5, backgroundColor: '#fff', borderRadius: 1, border: '1px solid #ddd' }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {item.filename}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: item.status === 'error' ? 'red' : item.status === 'success' ? 'green' : 'inherit'
+                  }}
+                >
+                  {item.status.toUpperCase()}
+                </Typography>
+              </Box>
 
-            {item.error && <Alert severity="error" sx={{ mb: 1, py: 0.5 }}>{item.error}</Alert>}
-
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              {item.status === 'error' && (
-                <Button size="small" startIcon={<RestartAltIcon />} onClick={() => retry(item.id)}>
-                  Retry
-                </Button>
+              {/* Show progress for uploading items.
+                  - If progressValue === 0, show indeterminate animation
+                  - Else show determinate with normalized value */}
+              {item.status === 'uploading' && (
+                <Box sx={{ mb: 1 }}>
+                  {progressValue === 0 ? (
+                    <LinearProgress sx={{ height: 8, borderRadius: 1 }} />
+                  ) : (
+                    <Box>
+                      <LinearProgress
+                        variant="determinate"
+                        value={progressValue}
+                        sx={{ height: 8, borderRadius: 1, mb: 0.5 }}
+                      />
+                      <Typography variant="caption">{progressValue}%</Typography>
+                    </Box>
+                  )}
+                </Box>
               )}
-              {item.status === 'success' && (
-                <Button size="small" startIcon={<FileDownloadIcon />} onClick={() => download(item)}>
-                  Download
+
+              {item.error && <Alert severity="error" sx={{ mb: 1, py: 0.5 }}>{item.error}</Alert>}
+
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                {item.status === 'error' && (
+                  <Button size="small" startIcon={<RestartAltIcon />} onClick={() => retry(item.id)}>
+                    Retry
+                  </Button>
+                )}
+                {item.status === 'success' && (
+                  <Button size="small" startIcon={<FileDownloadIcon />} onClick={() => download(item)}>
+                    Download
+                  </Button>
+                )}
+                <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={() => cancel(item.id)}>
+                  Remove
                 </Button>
-              )}
-              <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={() => cancel(item.id)}>
-                Remove
-              </Button>
+              </Box>
             </Box>
-          </Box>
-        ))}
+          );
+        })}
       </Stack>
     </Stack>
   );

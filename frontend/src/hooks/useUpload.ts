@@ -1,21 +1,27 @@
-import { useState, useCallback } from 'react';
-import client from '../api/client';
+import { useCallback, useRef, useState } from "react";
+import client from "../api/client";
 
 export interface UploadItem {
   id: string;
   filename: string;
   progress: number;
-  status: 'pending' | 'uploading' | 'success' | 'error';
+  status: "pending" | "uploading" | "success" | "error";
   error?: string;
   docId?: number;
   file?: File;
 }
 
-const ALLOWED_TYPES = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+const ALLOWED_TYPES = [
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain",
+];
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export const useServerUploadQueue = () => {
   const [items, setItems] = useState<UploadItem[]>([]);
+  // ref to store current timers / cancel tokens (optional)
+  const uploadsRef = useRef<Record<string, { cancelled?: boolean }>>({});
 
   const addFiles = useCallback((files: File[]) => {
     const newItems: UploadItem[] = [];
@@ -25,8 +31,8 @@ export const useServerUploadQueue = () => {
           id: Math.random().toString(36).substring(7),
           filename: f.name,
           progress: 0,
-          status: 'error',
-          error: `Invalid file type. Allowed: PDF, DOCX, TXT`
+          status: "error",
+          error: `Invalid file type. Allowed: PDF, DOCX, TXT`,
         });
         continue;
       }
@@ -35,8 +41,8 @@ export const useServerUploadQueue = () => {
           id: Math.random().toString(36).substring(7),
           filename: f.name,
           progress: 0,
-          status: 'error',
-          error: `File exceeds 10MB limit`
+          status: "error",
+          error: `File exceeds 10MB limit`,
         });
         continue;
       }
@@ -44,58 +50,112 @@ export const useServerUploadQueue = () => {
         id: `${Date.now()}_${Math.random()}`,
         filename: f.name,
         progress: 0,
-        status: 'pending',
-        file: f
+        status: "pending",
+        file: f,
       });
     }
-    setItems(prev => [...prev, ...newItems]);
+    setItems((prev) => [...prev, ...newItems]);
   }, []);
 
-  const upload = useCallback(async () => {
-    const pending = items.filter(i => i.status === 'pending');
-    if (pending.length === 0) return;
+  const upload = useCallback(() => {
+    setItems((prev) => {
+      const pending = prev.filter((i) => i.status === "pending" && i.file);
+      if (pending.length === 0) return prev;
 
-    for (const item of pending) {
-      if (!item.file) continue;
+      pending.forEach((item) => {
+        // 1. immediately mark as uploading
+        setItems((curr) =>
+          curr.map((i) =>
+            i.id === item.id ? { ...i, status: "uploading", progress: 0 } : i
+          )
+        );
 
-      setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'uploading', progress: 0 } : i));
+        // 2. start async upload task
+        (async () => {
+          try {
+            const formData = new FormData();
+            formData.append('file', item.file!, item.file!.name);
 
-      const formData = new FormData();
-      formData.append('file', item.file);
+            const resp = await client.post("/api/upload", formData, {
+              // IMPORTANT: do NOT set Content-Type manually
+              onUploadProgress: (e) => {
+                const loaded = e.loaded ?? 0;
+                const total = e.total ?? 0;
+                const progress = total ? Math.round((loaded / total) * 100) : 0;
 
-      try {
-        const resp = await client.post('/api/upload', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-          onUploadProgress: (e) => {
-            const progress = e.total ? Math.round((e.loaded / e.total) * 100) : 0;
-            setItems(prev => prev.map(i => i.id === item.id ? { ...i, progress } : i));
+                setItems((curr) =>
+                  curr.map((i) => (i.id === item.id ? { ...i, progress } : i))
+                );
+              },
+            });
+
+            const result = resp.data?.results?.[0];
+            setItems((curr) =>
+              curr.map((i) =>
+                i.id === item.id
+                  ? {
+                      ...i,
+                      status: "success",
+                      docId: result?.id,
+                      progress: 100,
+                    }
+                  : i
+              )
+            );
+          } catch (err: any) {
+            setItems((curr) =>
+              curr.map((i) =>
+                i.id === item.id
+                  ? {
+                      ...i,
+                      status: "error",
+                      error: err?.response?.data?.message || "Upload failed",
+                    }
+                  : i
+              )
+            );
           }
-        });
+        })();
+      });
 
-        const result = resp.data?.results?.[0];
-        setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'success', docId: result?.id, progress: 100 } : i));
-      } catch (e: unknown) {
-        const error = e as { response?: { data?: { message?: string } }; message?: string };
-        setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'error', error: error?.response?.data?.message || 'Upload failed' } : i));
-      }
-    }
-  }, [items]);
+      return prev;
+    });
+  }, []);
 
+  // Cancel — stop and remove the item
   const cancel = useCallback((id: string) => {
-    setItems(prev => prev.filter(i => i.id !== id));
+    // mark cancelled if in-progress
+    if (uploadsRef.current[id]) uploadsRef.current[id].cancelled = true;
+    // remove item from list
+    setItems((prev) => prev.filter((i) => i.id !== id));
   }, []);
 
-  const retry = useCallback((id: string) => {
-    setItems(prev => prev.map(i => i.id === id && i.status === 'error' ? { ...i, status: 'pending', error: undefined } : i));
-  }, []);
+  const retry = useCallback(
+    (id: string) => {
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === id
+            ? { ...i, status: "pending", error: undefined, progress: 0 }
+            : i
+        )
+      );
+      // start uploads after state settles (small timeout to ensure state update)
+      setTimeout(() => upload(), 50);
+    },
+    [upload]
+  );
 
   const download = useCallback((item: UploadItem) => {
     if (!item.docId) return;
-    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/download?docId=${item.docId}`;
-    const a = document.createElement('a');
+    const url = `${
+      import.meta.env.VITE_API_URL || "http://localhost:4000"
+    }/api/download?docId=${item.docId}`;
+    const a = document.createElement("a");
     a.href = url;
     a.download = item.filename;
+    document.body.appendChild(a);
     a.click();
+    a.remove();
   }, []);
 
   return { items, addFiles, upload, cancel, retry, download };

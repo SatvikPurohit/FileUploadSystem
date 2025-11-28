@@ -1,6 +1,6 @@
-import axios from 'axios';
+import axios from "axios";
 
-const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 const client = axios.create({
   baseURL: BACKEND_URL,
@@ -12,28 +12,39 @@ client.interceptors.request.use(config => {
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // IMPORTANT: when sending FormData, delete Content-Type so XHR sets
+  // "multipart/form-data; boundary=----WebKitFormBoundary..."
+  if (config.data instanceof FormData && config.headers) {
+    delete (config.headers as any)['Content-Type'];
+    delete (config.headers as any)['content-type'];
+  }
+
   return config;
 });
 
+
 client.interceptors.response.use(
-  response => response,
-  async error => {
+  (response) => response,
+  async (error) => {
     const originalRequest = error.config;
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      const refresh = sessionStorage.getItem('refresh');
+      const refresh = sessionStorage.getItem("refresh");
       if (refresh) {
         try {
-          const resp = await axios.post(`${BACKEND_URL}/api/auth/refresh`, { refresh });
+          const resp = await axios.post(`${BACKEND_URL}/api/auth/refresh`, {
+            refresh,
+          });
           if (resp.data.access) {
-            sessionStorage.setItem('access', resp.data.access);
+            sessionStorage.setItem("access", resp.data.access);
             originalRequest.headers.Authorization = `Bearer ${resp.data.access}`;
             return client(originalRequest);
           }
         } catch (e) {
-          sessionStorage.removeItem('access');
-          sessionStorage.removeItem('refresh');
-          window.location.href = '/login';
+          sessionStorage.removeItem("access");
+          sessionStorage.removeItem("refresh");
+          window.location.href = "/login";
           return Promise.reject(e);
         }
       }

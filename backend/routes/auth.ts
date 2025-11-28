@@ -32,7 +32,6 @@ const routes: ServerRoute[] = [
       return { access, refresh };
     }
   },
-
   {
     method: 'POST',
     path: '/api/auth/refresh',
