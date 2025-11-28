@@ -1,25 +1,13 @@
-// components/UploadQueue.tsx
 import React, { useRef } from "react";
-import {
-  Button,
-  Box,
-  Stack,
-  Typography,
-  LinearProgress,
-} from "@mui/material";
-import {
-  useServerUploadQueue,
-  type UploadItem,
-} from "../../hooks/useServerUploadQueue";
+import { Button, Box, Stack, Typography, LinearProgress } from "@mui/material";
+import { useServerUploadQueue, type UploadItem } from "../../hooks/useServerUploadQueue";
 
 export default function UploadQueue() {
-  const { items, enqueue, cancelOne, retry, cancelAll } =
-    useServerUploadQueue(3);
+  const { items, enqueue, cancelOne, retry, cancelAll } = useServerUploadQueue(3);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   return (
     <Box sx={{ p: 2 }}>
-      {/* Controls */}
       <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
         <input
           ref={fileRef}
@@ -28,64 +16,68 @@ export default function UploadQueue() {
           style={{ display: "none" }}
           onChange={(e) => e.target.files && enqueue(e.target.files)}
         />
-        <Button
-          variant="contained"
-          onClick={() => fileRef.current?.click()}
-        >
+        <Button variant="contained" onClick={() => fileRef.current?.click()}>
           Pick Files
         </Button>
-        <Button
-          variant="outlined"
-          color="error"
-          onClick={() => cancelAll()}
-        >
+        <Button variant="outlined" color="error" onClick={() => cancelAll()}>
           Stop All
         </Button>
       </Stack>
 
-      {/* Items list */}
       <Stack spacing={1.5}>
         {items.length === 0 && (
           <Typography variant="body2" color="textSecondary" sx={{ py: 2 }}>
             No files yet
           </Typography>
         )}
-        {items.map((it: UploadItem) => (
+        {items.map((item: UploadItem) => (
           <Box
-            key={it.id}
+            key={item.id}
             sx={{
               p: 2,
               border: "1px solid #ddd",
               borderRadius: 1,
-              backgroundColor: it.status === "success" ? "#f0f7ff" : "#fff",
+              backgroundColor: item.status === "success" ? "#f0f7ff" : "#fff",
             }}
           >
-            {/* File name and status */}
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                mb: 1,
+              }}
+            >
               <Box sx={{ flex: 1 }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 500, mb: 0.5 }}>
-                  {it.file.name}
+                  {item.file.name}
                 </Typography>
                 <Typography variant="caption" color="textSecondary">
-                  {it.status} • {it.progress}% • {(it.file.size / 1024 / 1024).toFixed(2)} MB
+                  {item.status} • {item.progress}% •{" "}
+                  {(item.file.size / 1024 / 1024).toFixed(2)} MB
                 </Typography>
               </Box>
               <Stack direction="row" spacing={1}>
-                {it.status === "failed" && (
-                  <Button size="small" variant="outlined" onClick={() => retry(it.id)}>
+                {item.status === "failed" && (
+                  <Button size="small" variant="outlined" onClick={() => retry(item.id)}>
                     Retry
                   </Button>
                 )}
-                {it.status !== "success" && (
-                  <Button size="small" color="error" variant="outlined" onClick={() => cancelOne(it.id)}>
+                {item.status !== "success" && (
+                  <Button
+                    size="small"
+                    color="error"
+                    variant="outlined"
+                    onClick={() => cancelOne(item.id)}
+                  >
                     Cancel
                   </Button>
                 )}
-                {it.status === "success" && (
+                {item.status === "success" && (
                   <Button
                     size="small"
                     variant="contained"
-                    href={`/api/download?docId=${it.docId}`}
+                    href={`/api/download?docId=${item.docId}`}
                     component="a"
                   >
                     Download
@@ -94,12 +86,7 @@ export default function UploadQueue() {
               </Stack>
             </Box>
 
-            {/* Progress bar */}
-            <LinearProgress
-              variant="determinate"
-              value={it.progress}
-              sx={{ height: 4, borderRadius: 2 }}
-            />
+            <LinearProgress variant="determinate" value={item.progress} sx={{ height: 4, borderRadius: 2 }} />
           </Box>
         ))}
       </Stack>

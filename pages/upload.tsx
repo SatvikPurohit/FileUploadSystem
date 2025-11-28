@@ -12,23 +12,15 @@ export default function UploadPage() {
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#f5f5f5", py: 4 }}>
       <Container maxWidth="md">
-        {/* Header */}
         <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Box>
-            <Typography variant="h5" sx={{ fontWeight: 600, mb: 0.5 }}>
-              Upload
-            </Typography>
-          </Box>
-          <Button
-            startIcon={<KeyboardBackspaceIcon />}
-            onClick={() => router.push("/")}
-            size="small"
-          >
+          <Typography variant="h5" sx={{ fontWeight: 600 }}>
+            Upload
+          </Typography>
+          <Button startIcon={<KeyboardBackspaceIcon />} onClick={() => router.push("/")} size="small">
             Back
           </Button>
         </Box>
 
-        {/* Upload Queue */}
         <Box sx={{ backgroundColor: "#fff", p: 2, borderRadius: 1, border: "1px solid #ddd" }}>
           <UploadQueue />
         </Box>

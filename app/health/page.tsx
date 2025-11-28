@@ -1,4 +1,3 @@
-// app/health/page.tsx
 import { Box, Container, Typography, Stack } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 

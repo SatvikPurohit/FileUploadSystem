@@ -1,191 +1,149 @@
 # 📤 File Upload System
 
-A dead simple app to upload files, keep them on your machine, and grab them back whenever you need them. Built with Next.js, React, and Material-UI. No fancy stuff. Just works.
+Okay so like... you know how you need to store files? Yeah, this does that. No cloud nonsense, no AWS bills, just your computer. Built with Next.js, React, and Material-UI. It's messy but it works, lol.
 
-**👉 [Quick Start Guide](QUICKSTART.md)** — Get running in 5 minutes!
+Quick Start
 
-## What's it do?
+## what it does
 
-- **Sign in** — quick login, done
-- **Upload files** — pick one or more, they get saved locally
-- **Watch progress** — simple progress bars showing what's happening
-- **Download anytime** — grab your files back whenever
-- **Easy controls** — retry, cancel, download — all right there
-- **Works great** — clean, simple interface focused on getting the job done
+drag n drop your files, they stick around on your computer, grab em back whenever. that's literally it.
 
-That's it, really.
+- **login** — type in your email, boom
+- **upload files** — pick stuff, watch bars move
+- **download** — click and it's yours
+- **controls** — retry, stop, whatever
+- **zero cloud** — everything stays put
 
-## Quick Start
+dead simple.
 
-### Need these
-- Node.js (v16+)
-- npm or yarn
+## actually getting it running
 
-### Get it running
+### what you need
+- Node.js (16+)
+- npm or yarn or whatever
 
-1. **Download the code**
+### let's go
+
+1. **grab the code**
    ```bash
    cd FileUploadSystem
    ```
 
-2. **Install stuff**
+2. **install stuff**
    ```bash
    npm install
    ```
 
-3. **Set up database**
+3. **database time**
    ```bash
    npx prisma migrate dev
    ```
-   Creates a SQLite database with a demo user ready to go
+   makes a db and adds a demo user. cool.
 
-4. **Start it up**
+4. **fire it up**
    ```bash
    npm run dev
    ```
-   Then go to `http://localhost:3000`
+   then hit `http://localhost:3000`
 
-5. **Log in**
-   - Email: `demo@local.test`
-   - Password: `Password123!`
+5. **login**
+   - email: `demo@local.test`
+   - password: `Password123!`
 
-Done. You're in.
+you're in. now what?
 
-## How to use it
+## using this thing
 
-### Home page
-- Two buttons: Upload or Login
-- Demo credentials shown
-- Simple and clean
+### home
+click a button. that's it.
 
-### Upload your stuff
-- Click "Upload Files"
-- Hit "Pick Files" and choose what you want
-- Watch the progress bar
-- Once done, download it or try again if something broke
-- "Stop All" to cancel everything
+### upload
+pick files, watch them go up, download em or try again. "Stop All" nukes everything.
 
-### Get your files back
-- On the upload page, find what you uploaded
-- Click "Download" next to it
-- Done
+### downloads
+your files are sitting there. click download. done.
 
-### Stay logged in
-- You stay signed in while you're using it
-- Stored in your browser, so if you close and come back, you're still there
+### staying logged in
+stays in your browser. close it? you're still logged in next time. it's magic. (not really, it's localStorage)
 
-### Where do files go?
-- Saved in `public/uploads/` on your computer
-- Each user gets their own folder
-- Everything stays local — nothing goes to the cloud
-- Files stick around until you delete them
+### where do files live?
+`public/uploads/` on your hard drive. each user gets their own folder. no cloud, no servers far away, just... there. on your computer. forever probably.
 
-## What's inside
+## the tech stack
 
-```
-FileUploadSystem/
-├── app/                              
-│   ├── components/UploadQueue.tsx    # The upload UI
-│   ├── login/page.tsx                # Login form
-│   ├── health/page.tsx               # System status
-│   ├── page.tsx                      # Home page
-│   ├── globals.css                   # Base styles
-│   └── layout.tsx                    # App wrapper
-├── pages/
-│   ├── api/
-│   │   ├── upload/server-upload.ts   # Handles uploads
-│   │   ├── download.ts               # Serves files
-│   │   └── auth/
-│   │       ├── login.ts              
-│   │       ├── logout.ts             
-│   │       └── refresh.ts            
-│   ├── _app.tsx                      # Global setup
-│   └── upload.tsx                    # Upload page
-├── prisma/
-│   ├── schema.prisma                 # Database setup
-│   └── dev.db                        # The actual database
-├── hooks/
-│   └── useServerUploadQueue.tsx       # Upload logic
-├── lib/
-│   ├── auth.ts                       # Login stuff
-│   └── prisma.ts                     # Database connection
-└── public/uploads/                   # Your files go here
-```
+- **Next.js 16** — web framework. it's good
+- **React 19** — makes pretty things
+- **Material-UI** — buttons and forms and stuff
+- **Prisma** — talks to the database so we don't have to
+- **SQLite** — database that just works
+- **Axios** — http requests
+- **Formidable** — parses file uploads
+- **JWT** — keeps you logged in
 
-## What we're using
+## tweak it
 
-- **Next.js 16** — the web framework
-- **React 19** — makes the UI
-- **Material-UI** — pre-made components that look good
-- **Emotion** — makes the styling work
-- **Prisma** — talks to the database
-- **SQLite** — local database
-- **Axios** — sends requests
-- **Formidable** — handles file uploads
-- **JWT** — keeps you logged in securely
-
-## Customize it
-
-Make a `.env.local` file if you want to change stuff:
+make `.env.local`:
 
 ```
 DATABASE_URL="file:./prisma/dev.db"
-JWT_SECRET="your-secret-here"
+JWT_SECRET="whatever"
 ```
 
-By default it just works, but if you need custom settings, those are the ones.
+don't even need it tho. just works out of the box.
 
-## Useful commands
+## commands that matter
 
-### Add more users
+### add users
 ```bash
 npx prisma db seed
 ```
 
-### See what's in the database
+### see your data
 ```bash
 npx prisma studio
 ```
-Opens a web UI where you can see and change everything.
+opens a ui. you can see stuff. click stuff. change stuff. it's fun.
 
-### Start over
+### nuke it from orbit
 ```bash
 rm prisma/dev.db
 npx prisma migrate dev
 ```
+starts fresh. everything gone. new database. just like that.
 
-### Make it for real (production)
+### make it production ready
 ```bash
 npm run build
 npm start
 ```
 
-## Stuck? Check this
+## when stuff breaks
 
-**Files won't upload?**
-- Make sure you're logged in
-- Check if `public/uploads/` exists (made automatically)
-- Open browser console (F12) and look for red errors
-- Make sure you can write to that folder
+**files won't upload?**
+- you logged in?
+- `public/uploads/` folder there?
+- check console (f12) for errors
+- can you write to that folder?
 
-**Can't log in?**
-- Try: `demo@local.test` / `Password123!`
-- Or add your own user in Prisma Studio
+**can't login?**
+- `demo@local.test` / `Password123!`
+- or make your own user in prisma studio
 
-**Port 3000 is taken?**
-- It'll try another port automatically
-- Or kill whatever's using 3000
+**port 3000 taken?**
+- it'll find another one automatically
+- or just kill whatever's on 3000
 
-**Database messed up?**
-- Delete `prisma/dev.db` and run `npx prisma migrate dev` again
-- This resets everything and makes a fresh database
+**database is broken?**
+- delete `prisma/dev.db`
+- run `npx prisma migrate dev`
+- boom. fixed.
 
-**Stuff looks broken?**
-- Clear cache: Ctrl+Shift+Delete (or Cmd+Shift+Delete on Mac)
-- Hard refresh: Ctrl+Shift+R (or Cmd+Shift+R on Mac)
-- Try a different browser
+**ui looks weird?**
+- clear your cache (ctrl+shift+delete)
+- hard refresh (ctrl+shift+r)
+- try safari i guess
 
-## API stuff (if you care)
+## api (if you're into that)
 
 ```
 POST /api/auth/login
@@ -195,23 +153,22 @@ POST /api/upload/server-upload
 GET /api/download?docId=ID
 ```
 
-## Debug mode
+## debug
 
-See what's happening:
+see what's happening:
 ```bash
 DEBUG=prisma:* npm run dev
 ```
 
-Check TypeScript errors:
+find typescript errors:
 ```bash
 npm run type-check
 ```
 
-## License
+## license
 
-Use it. Learn from it. Build on it. No restrictions.
+do whatever. learn from it. steal the code. i don't care.
 
+## questions?
 
-## Questions?
-
-This is a learning project. If something doesn't work or is confusing, feel free to check the code or ask for help.
+it's a learning project. if it breaks or doesn't make sense, look at the code or just... figure it out. that's the fun part.

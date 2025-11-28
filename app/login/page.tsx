@@ -3,15 +3,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
-import {
-  Box,
-  Container,
-  TextField,
-  Button,
-  Typography,
-  Alert,
-  Stack,
-} from "@mui/material";
+import { Box, Container, TextField, Button, Typography, Alert, Stack } from "@mui/material";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("demo@local.test");
@@ -20,7 +12,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  function validate() {
+  const validate = () => {
     if (!email || !/\S+@\S+\.\S+/.test(email)) {
       setError("Enter a valid email.");
       return false;
@@ -31,9 +23,9 @@ export default function LoginPage() {
     }
     setError(null);
     return true;
-  }
+  };
 
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
@@ -45,12 +37,11 @@ export default function LoginPage() {
       }
       router.push("/upload");
     } catch (err: any) {
-      console.error(err);
       setError(err?.response?.data?.message || err?.message || "Login failed");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#f5f5f5", py: 4 }}>
@@ -64,35 +55,9 @@ export default function LoginPage() {
         <Box component="form" onSubmit={handleSubmit} sx={{ backgroundColor: "#fff", p: 3, borderRadius: 1, border: "1px solid #ddd" }}>
           <Stack spacing={2}>
             {error && <Alert severity="error">{error}</Alert>}
-
-            <TextField
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              fullWidth
-              size="small"
-              variant="outlined"
-            />
-
-            <TextField
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              fullWidth
-              size="small"
-              variant="outlined"
-            />
-
-            <Button
-              type="submit"
-              variant="contained"
-              fullWidth
-              disabled={loading}
-            >
+            <TextField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required fullWidth size="small" />
+            <TextField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required fullWidth size="small" />
+            <Button type="submit" variant="contained" fullWidth disabled={loading}>
               {loading ? "Signing in..." : "Sign In"}
             </Button>
           </Stack>
