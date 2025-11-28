@@ -35,4 +35,4 @@ Notes:
   - POST /api/upload (multipart form-data, field name `file`)
   - GET /api/download?docId=ID
 - Uploads stored in `public/uploads/<userId>` by default.
-- The backend uses the Prisma schema copied from the main project. If you want a separate DB file, update `prisma/schema.prisma` and `.env` accordingly.
+- The backend uses the Prisma schema.
