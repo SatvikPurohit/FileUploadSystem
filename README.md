@@ -6,7 +6,7 @@
 
 - **Backend**: Node.js + Hapi + Prisma + SQLite (port 4000)
 - **Frontend**: React + Vite + Material-UI (port 5173)
-- **Database**: SQLite shared between projects
+- **Database**: SQLite 
 - **Storage**: Local filesystem (`public/uploads/`)
 
 ## Quick start (both at once)
