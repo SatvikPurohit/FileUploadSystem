@@ -1,8 +1,0 @@
-/* Material-UI base styles (replaces Tailwind) */
-html, body, #__next {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-}
-
-/* MUI will handle the rest via CssBaseline and ThemeProvider */

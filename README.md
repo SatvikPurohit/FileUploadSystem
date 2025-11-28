@@ -1,174 +1,112 @@
-# 📤 File Upload System
+# File Upload System
 
-Okay so like... you know how you need to store files? Yeah, this does that. No cloud nonsense, no AWS bills, just your computer. Built with Next.js, React, and Material-UI. It's messy but it works, lol.
+Okay so like... you know how you need to store files? Yeah, this does that. No cloud nonsense, no AWS bills, just your computer. Now split into two separate parts: a Node.js Hapi backend and a React frontend.
 
-Quick Start
+**[Backend Docs](backend/README.md)** | **[Frontend Docs](frontend/README.md)**
 
-## what it does
+## Architecture
 
-drag n drop your files, they stick around on your computer, grab em back whenever. that's literally it.
+- **Backend**: Node.js + Hapi + Prisma + SQLite (port 4000)
+- **Frontend**: React + Vite + Material-UI (port 5173)
+- **Database**: SQLite shared between projects
+- **Storage**: Local filesystem (`public/uploads/`)
 
-- **login** — type in your email, boom
-- **upload files** — pick stuff, watch bars move
-- **download** — click and it's yours
-- **controls** — retry, stop, whatever
-- **zero cloud** — everything stays put
+## Quick start (both at once)
 
-dead simple.
-
-## actually getting it running
-
-### what you need
-- Node.js (16+)
-- npm or yarn or whatever
-
-### let's go
-
-1. **grab the code**
-   ```bash
-   cd FileUploadSystem
-   ```
-
-2. **install stuff**
-   ```bash
-   npm install
-   ```
-
-3. **database time**
-   ```bash
-   npx prisma migrate dev
-   ```
-   makes a db and adds a demo user. cool.
-
-4. **fire it up**
-   ```bash
-   npm run dev
-   ```
-   then hit `http://localhost:3000`
-
-5. **login**
-   - email: `demo@local.test`
-   - password: `Password123!`
-
-you're in. now what?
-
-## using this thing
-
-### home
-click a button. that's it.
-
-### upload
-pick files, watch them go up, download em or try again. "Stop All" nukes everything.
-
-### downloads
-your files are sitting there. click download. done.
-
-### staying logged in
-stays in your browser. close it? you're still logged in next time. it's magic. (not really, it's localStorage)
-
-### where do files live?
-`public/uploads/` on your hard drive. each user gets their own folder. no cloud, no servers far away, just... there. on your computer. forever probably.
-
-## the tech stack
-
-- **Next.js 16** — web framework. it's good
-- **React 19** — makes pretty things
-- **Material-UI** — buttons and forms and stuff
-- **Prisma** — talks to the database so we don't have to
-- **SQLite** — database that just works
-- **Axios** — http requests
-- **Formidable** — parses file uploads
-- **JWT** — keeps you logged in
-
-## tweak it
-
-make `.env.local`:
-
-```
-DATABASE_URL="file:./prisma/dev.db"
-JWT_SECRET="whatever"
-```
-
-don't even need it tho. just works out of the box.
-
-## commands that matter
-
-### add users
 ```bash
-npx prisma db seed
+# install dependencies in both backend and frontend
+npm install
+
+# setup database
+npm run build:backend
+
+# seed demo user
+npm run seed
+
+# start both backend and frontend (requires concurrently)
+npm install -g concurrently  # if you don't have it
+npm run dev
 ```
 
-### see your data
+Then:
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:4000/api
+
+Demo login:
+- Email: `demo@local.test`
+- Password: `Password123!`
+
+## individual development
+
+### Backend only
+
 ```bash
-npx prisma studio
+cd backend
+npm install
+npm run prisma:generate
+npm run prisma:migrate    # setup DB
+npm run seed              # add demo user
+npm run dev               # start server on 4000
 ```
-opens a ui. you can see stuff. click stuff. change stuff. it's fun.
 
-### nuke it from orbit
+### Frontend only
+
 ```bash
-rm prisma/dev.db
-npx prisma migrate dev
-```
-starts fresh. everything gone. new database. just like that.
-
-### make it production ready
-```bash
-npm run build
-npm start
+cd frontend
+npm install
+npm run dev               # start dev server on 5173
 ```
 
-## when stuff breaks
+Make sure backend is running on port 4000 when developing frontend.
 
-**files won't upload?**
-- you logged in?
-- `public/uploads/` folder there?
-- check console (f12) for errors
-- can you write to that folder?
+## Commands
 
-**can't login?**
-- `demo@local.test` / `Password123!`
-- or make your own user in prisma studio
+- `npm run dev` — start both backend and frontend
+- `npm run dev:backend` — backend only
+- `npm run dev:frontend` — frontend only
+- `npm run build` — build both (install deps, generate Prisma, build frontend)
+- `npm run seed` — add demo@local.test user
+- `npm run prisma:studio` — open Prisma Studio to view/edit database
 
-**port 3000 taken?**
-- it'll find another one automatically
-- or just kill whatever's on 3000
 
-**database is broken?**
-- delete `prisma/dev.db`
-- run `npx prisma migrate dev`
-- boom. fixed.
 
-**ui looks weird?**
-- clear your cache (ctrl+shift+delete)
-- hard refresh (ctrl+shift+r)
-- try safari i guess
+## features
 
-## api (if you're into that)
+- login with email/password
+- token-based auth (JWT, access + refresh)
+- multi-file upload to local filesystem
+- file type validation (PDF, DOCX, TXT only)
+- 10MB per file max
+- progress bars
+- download files by docId
+- auto-logout on 401
+- all files stored locally in `public/uploads/<userId>/`
 
-```
-POST /api/auth/login
-POST /api/auth/logout
-POST /api/auth/refresh
-POST /api/upload/server-upload
-GET /api/download?docId=ID
-```
+## troubleshooting
 
-## debug
+**"Cannot find module" errors on npm run dev**
+- Make sure both `npm install` in root and within `backend/` and `frontend/`
 
-see what's happening:
-```bash
-DEBUG=prisma:* npm run dev
-```
+**Backend won't start**
+- Check port 4000 is free
+- Run `npm run seed` to create demo user
+- Check `.env` has DATABASE_URL set correctly
 
-find typescript errors:
-```bash
-npm run type-check
-```
+**Frontend can't connect to backend**
+- Verify backend is running on 4000
+- Check `.env.local` has `VITE_API_URL=http://localhost:4000`
+- Check browser console for CORS errors (should be allowed by default)
 
-## license
+**Database messed up**
+- Delete `prisma/dev.db` (or `backend/prisma/dev.db`)
+- Run `npm run build:backend` to recreate
+- Run `npm run seed` to add demo user
 
-do whatever. learn from it. steal the code. i don't care.
+## next steps
 
-## questions?
-
-it's a learning project. if it breaks or doesn't make sense, look at the code or just... figure it out. that's the fun part.
+- Add tests (Jest for backend, Vitest for frontend)
+- Add user registration
+- Add document metadata (file size, upload date, etc.)
+- Add file search/filtering
+- Add pagination
+- Deploy to production (Docker, cloud host, etc.)
