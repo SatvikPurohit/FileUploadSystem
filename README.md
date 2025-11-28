@@ -1,7 +1,5 @@
 # File Upload System
 
-Okay so like... you know how you need to store files? Yeah, this does that. No cloud nonsense, no AWS bills, just your computer. Now split into two separate parts: a Node.js Hapi backend and a React frontend.
-
 **[Backend Docs](backend/README.md)** | **[Frontend Docs](frontend/README.md)**
 
 ## Architecture
