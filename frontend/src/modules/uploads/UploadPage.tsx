@@ -1,5 +1,4 @@
-// src/modules/uploads/UploadPage.tsx
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Box,
   Paper,

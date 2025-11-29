@@ -3,8 +3,6 @@ import Hapi from "@hapi/hapi";
 
 import authRoutes from "./routes/auth";
 import uploadRoutes from "./routes/upload";
-import downloadRoutes from "./routes/download";
-import staticRoutes from "./routes/static";
 import { PORT, FRONTEND_URL } from "./config";
 import InertPlugin from "./plugins/inert";
 
@@ -38,14 +36,11 @@ async function start() {
     },
   });
 
-  // register the actual plugin object
   await server.register(InertPlugin);
 
-  // ensure your route modules export ServerRoute[]
   server.route(authRoutes);
   server.route(uploadRoutes);
-  server.route(downloadRoutes);
-  server.route(staticRoutes);
+
 
   server.ext("onRequest", (request, h) => {
     try {
