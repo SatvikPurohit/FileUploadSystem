@@ -1,30 +1,43 @@
 {
-  "name": "frontend",
+  "name": "frontend-production-a",
+  "version": "1.0.0",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview --port 5174",
+    "test": "jest --coverage",
+    "test:watch": "jest --watchAll"
   },
   "dependencies": {
-    "@mui/material": "^5.14.0",
-    "@mui/icons-material": "^5.14.0",
-    "@emotion/react": "^11.11.0",
-    "@emotion/styled": "^11.11.0",
-    "axios": "^1.5.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-router-dom": "^6.15.0"
+    "@emotion/cache": "11.11.0",
+    "@emotion/react": "11.11.0",
+    "@emotion/styled": "11.11.0",
+    "@mui/icons-material": "5.11.16",
+    "@mui/material": "5.15.0",
+    "@tanstack/react-query": "^5.0.0",
+    "axios": "1.6.0",
+    "msw": "1.2.1",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-dropzone": "14.2.3",
+    "react-router-dom": "6.14.1",
+    "stylis-plugin-rtl": "2.1.0"
   },
   "devDependencies": {
-    "@types/node": "^24.10.1",
-    "@types/react": "^19.2.5",
-    "@types/react-dom": "^19.2.3",
+    "@testing-library/jest-dom": "6.0.0",
+    "@testing-library/react": "14.0.0",
+    "@testing-library/user-event": "14.4.3",
+    "@types/jest": "29.5.3",
+    "@types/react": "18.2.21",
+    "@types/react-dom": "18.2.7",
+    "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^5.1.1",
-    "typescript": "~5.9.3",
-    "vite": "^7.2.4"
+    "cross-env": "7.0.3",
+    "jest": "29.7.0",
+    "ts-jest": "29.1.0",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.0",
+    "whatwg-fetch": "3.6.2"
   }
 }

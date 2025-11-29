@@ -1,25 +1,25 @@
-import { useState } from 'react';
-import { Home } from './pages/Home';
-import { Login } from './pages/Login';
-import { Upload } from './pages/Upload';
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import LoginPage from "./modules/auth/LoginPage";
+import UploadPage from "./modules/uploads/UploadPage";
+import AppLayout from "./layouts/AppLayout";
+import ProtectedRoute from "./components/ProtectedRoute";
 
-function App() {
-  const [page, setPage] = useState('home');
-  const [loggedIn, setLoggedIn] = useState(!!sessionStorage.getItem('access'));
-
-  const navigate = (newPage: string) => setPage(newPage);
-
-  if (!loggedIn && page !== 'login' && page !== 'home') {
-    return <Login onLoginSuccess={() => setLoggedIn(true)} onNavigate={navigate} />;
-  }
-
+export default function App() {
   return (
-    <>
-      {page === 'home' && <Home onNavigate={navigate} />}
-      {page === 'login' && <Login onLoginSuccess={() => setLoggedIn(true)} onNavigate={navigate} />}
-      {page === 'upload' && <Upload onNavigate={navigate} />}
-    </>
+    <AppLayout>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/upload"
+          element={
+            <ProtectedRoute>
+              <UploadPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/" element={<Navigate to="/upload" replace />} />
+      </Routes>
+    </AppLayout>
   );
 }
-
-export default App;

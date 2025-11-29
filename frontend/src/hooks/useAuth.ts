@@ -1,34 +1,23 @@
-import { useState, useCallback } from 'react';
-import client from '../api/client';
+// src/hooks/useAuth.ts
+import api from '../api/axios'
+import { setAccessToken, clearAccessToken } from '../api/auth'
 
-export const useAuth = () => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export async function login(username: string, password: string) {
+  // axios will send credentials? here server sets cookie in response
+  const res = await api.post('/auth/login', { username, password })
+  const access = res.data.accessToken
+  setAccessToken(access)
+  return res.data
+}
 
-  const login = useCallback(async (email: string, password: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const resp = await client.post('/api/auth/login', { email, password });
-      const { access, refresh } = resp.data;
-      if (access) sessionStorage.setItem('access', access);
-      if (refresh) sessionStorage.setItem('refresh', refresh);
-      return true;
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } }; message?: string };
-      setError(error?.response?.data?.message || error?.message || 'Login failed');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const logout = useCallback(() => {
-    sessionStorage.removeItem('access');
-    sessionStorage.removeItem('refresh');
-  }, []);
-
-  const isLoggedIn = !!sessionStorage.getItem('access');
-
-  return { login, logout, isLoggedIn, loading, error };
-};
+export async function logout() {
+  try {
+    await api.post('/auth/logout') // server will clear cookie
+  } catch (e) {
+    // ignore error but still clear client
+  } finally {
+    clearAccessToken()
+    // redirect to login
+    window.location.href = '/login'
+  }
+}
