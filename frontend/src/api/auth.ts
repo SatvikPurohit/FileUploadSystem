@@ -1,10 +1,14 @@
-let ACCESS_TOKEN: string | null = null;
-export function setAccessToken(t: string | null) {
-  ACCESS_TOKEN = t;
+// src/api/auth.ts
+let inMemoryAccessToken: string | null = null;
+
+export function setAccessToken(token: string | null) {
+  inMemoryAccessToken = token;
 }
-export function getAccessToken() {
-  return ACCESS_TOKEN;
+
+export function getAccessToken(): string | null {
+  return inMemoryAccessToken;
 }
+
 export function clearAccessToken() {
-  ACCESS_TOKEN = null;
+  inMemoryAccessToken = null;
 }

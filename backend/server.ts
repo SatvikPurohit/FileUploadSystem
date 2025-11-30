@@ -1,10 +1,11 @@
-import "@hapi/inert";
+// server.ts
 import Hapi from "@hapi/hapi";
-
+import ms from "ms";
+import InertPlugin from "./plugins/inert";
 import authRoutes from "./routes/auth";
 import uploadRoutes from "./routes/upload";
 import { PORT, FRONTEND_URL } from "./config";
-import InertPlugin from "./plugins/inert";
+import { limitGlobal, limitLogin, limitRefresh } from "./utils/simpleRateLimit";
 
 async function start() {
   const server = Hapi.server({
@@ -13,7 +14,7 @@ async function start() {
     routes: {
       cors: {
         origin: [FRONTEND_URL, "http://localhost:3000"],
-        credentials: true, 
+        credentials: true,
         additionalHeaders: [
           "authorization",
           "content-type",
@@ -31,30 +32,76 @@ async function start() {
         multipart: {
           output: "stream",
         },
-        maxBytes: 104857600,
+        maxBytes: 104857600, // 100MB
       },
     },
   });
 
-  await server.register(InertPlugin);
+  // ---------------- Global cookie config ----------------
+  server.state("refresh_token", {
+    ttl: ms("30d"), // 30 days
+    isSecure: process.env.NODE_ENV === "production",
+    isHttpOnly: true,
+    path: "/", // cookie valid site-wide
+    isSameSite: "Lax",
+  });
 
-  server.route(authRoutes);
-  server.route(uploadRoutes);
+  // ---------------- Global pre-auth hook ----------------
+  // Runs once (registered at startup) for every incoming request BEFORE auth and route handlers.
+  server.ext("onPreAuth", (request, h) => {
+    // 1) Global per-IP rate limiting (always apply)
+    const globalResult = limitGlobal(request, h);
+    if (globalResult !== h.continue) {
+      // limitGlobal returned a takeover response (429)
+      return globalResult;
+    }
 
+    // 2) Route-specific limits (login & refresh)
+    // Put lightweight per-route checks here so we don't need to edit route files.
+    const path = request.path || "";
+    const method = (request.method || "").toUpperCase();
 
+    // Login route (POST /api/auth/login)
+    if (method === "POST" && path === "/api/auth/login") {
+      const loginResult = limitLogin(request, h);
+      if (loginResult !== h.continue) return loginResult; // takeover on 429
+    }
+
+    // Refresh route (POST /api/auth/refresh)
+    if (method === "POST" && path === "/api/auth/refresh") {
+      const refreshResult = limitRefresh(request, h);
+      if (refreshResult !== h.continue) return refreshResult;
+    }
+
+    // If nothing blocked, continue normal lifecycle
+    return h.continue;
+  });
+
+  // ---------------- Lightweight request logging ----------------
   server.ext("onRequest", (request, h) => {
     try {
       const ct = request.headers["content-type"] || "unknown";
       console.log(
-        "[onRequest] %s %s content-type=%s",
+        "[onRequest] %s %s content-type=%s remote=%s",
         request.method.toUpperCase(),
         request.path,
-        ct
+        ct,
+        request.info.remoteAddress
       );
-    } catch (e) {}
+    } catch (e) {
+      // noop
+    }
     return h.continue;
   });
 
+  // Register static asset plugin
+  await server.register(InertPlugin);
+
+  // Register routes
+  server.route(authRoutes);
+  server.route(uploadRoutes);
+
+  // Start server
   await server.start();
   console.log("Server running on %s", server.info.uri);
 }

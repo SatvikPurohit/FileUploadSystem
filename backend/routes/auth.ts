@@ -77,6 +77,8 @@ const routes: ServerRoute[] = [
         data: { refreshTokenHash: hash },
       });
 
+      h.state("refresh_token", refresh);
+
       return h.response({
         accessToken: access,
         refreshToken: refresh,
@@ -101,7 +103,11 @@ const routes: ServerRoute[] = [
     },
 
     handler: async (request, h) => {
-      const { refresh } = request.payload as { refresh: string };
+      const refresh = request.state?.refresh_token;
+
+      if (!refresh) {
+        return h.response({ message: "No refresh token" }).code(401);
+      }
 
       try {
         const decoded = jwt.verify(refresh, JWT_SECRET) as { userId: number };
@@ -116,6 +122,17 @@ const routes: ServerRoute[] = [
 
         const ok = await bcrypt.compare(refresh, user.refreshTokenHash);
         if (!ok) return h.response({ message: "Invalid" }).code(401);
+
+        const newRefresh = jwt.sign({ userId: user.id }, JWT_SECRET, {
+          expiresIn: "7d",
+        });
+        
+        const newHash = await bcrypt.hash(newRefresh, 8);
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { refreshTokenHash: newHash },
+        });
+        h.state("refresh_token", newRefresh);
 
         const access = jwt.sign(
           { userId: user.id, email: user.email },
