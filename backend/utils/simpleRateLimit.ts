@@ -1,5 +1,7 @@
-import { Request, ReqRefDefaults, ResponseToolkit } from "@hapi/hapi";
+// utils/simpleRateLimit.ts
+import { Request, ResponseToolkit } from "@hapi/hapi";
 
+/* ----------------- internal bucket impl ----------------- */
 type Bucket = {
   count: number;
   expiresAt: number;
@@ -7,16 +9,12 @@ type Bucket = {
 
 const buckets = new Map<string, Bucket>();
 
-/** Generic sliding-window limiter */
 function limit(key: string, max: number, windowMs: number) {
   const now = Date.now();
   const bucket = buckets.get(key);
 
   if (!bucket || now > bucket.expiresAt) {
-    buckets.set(key, {
-      count: 1,
-      expiresAt: now + windowMs,
-    });
+    buckets.set(key, { count: 1, expiresAt: now + windowMs });
     return true;
   }
 
@@ -28,32 +26,10 @@ function limit(key: string, max: number, windowMs: number) {
   return false;
 }
 
-/** GLOBAL: 100 req/min per IP */
-export function limitGlobal(
-  request: { info: { remoteAddress: string } },
-  h: {
-    response: (arg0: { message: string }) => {
-      (): any;
-      new (): any;
-      code: {
-        (arg0: number): {
-          (): any;
-          new (): any;
-          header: {
-            (arg0: string, arg1: string): {
-              (): any;
-              new (): any;
-              takeover: { (): any; new (): any };
-            };
-            new (): any;
-          };
-        };
-        new (): any;
-      };
-    };
-    continue: any;
-  }
-) {
+/* ----------------- exported limiters (typed) ----------------- */
+
+/** Global limiter — 100 req/min per IP */
+export function limitGlobal(request: Request, h: ResponseToolkit) {
   const ip = request.info.remoteAddress ?? "unknown";
   const ok = limit(`ip:${ip}`, 100, 60_000);
 
@@ -64,36 +40,14 @@ export function limitGlobal(
       .header("Retry-After", "60")
       .takeover();
   }
-
   return h.continue;
 }
 
-/** LOGIN brute-force: 5 attempts per 15 min (per IP + per username) */
-export function limitLogin(
-  request: { info: { remoteAddress: string }; payload: {} },
-  h: {
-    response: (arg0: { message: string }) => {
-      (): any;
-      new (): any;
-      code: {
-        (arg0: number): {
-          (): any;
-          new (): any;
-          takeover: { (): any; new (): any };
-        };
-        new (): any;
-      };
-    };
-    continue: any;
-  }
-) {
+/** Login limiter — 5 attempts / 15min per IP and per username */
+export function limitLogin(request: Request, h: ResponseToolkit) {
   const ip = request.info.remoteAddress ?? "unknown";
-  const body: { email: string; username: string } = (request.payload = {
-    email: "",
-    username: "",
-  });
-  const username =
-    (body.email || body.username || "").toLowerCase().trim() || "";
+  const body = (request.payload || {}) as any;
+  const username = (body.email || body.username || "").toString().toLowerCase();
 
   const okIP = limit(`login-ip:${ip}`, 5, 15 * 60_000);
   const okUser = username
@@ -108,15 +62,17 @@ export function limitLogin(
       .code(429)
       .takeover();
   }
-
   return h.continue;
 }
 
-/** REFRESH spam protection: 20 refresh / min per refresh token hash prefix */
-export function limitRefresh(request: Request<ReqRefDefaults>, h: ResponseToolkit<ReqRefDefaults>) {
-  const refresh = request.state?.refresh_token || "";
-  const key = refresh
-    ? `r:${refresh.slice(0, 12)}`
+/** Refresh limiter — 20 refresh/min per token prefix or IP */
+export function limitRefresh(request: Request, h: ResponseToolkit) {
+  // NOTE: request.state has unknown keys at compile time; narrow it safely
+  const refreshToken = (request.state as Record<string, any>)?.refresh_token as
+    | string
+    | undefined;
+  const key = refreshToken
+    ? `r:${String(refreshToken).slice(0, 12)}`
     : `rip:${request.info.remoteAddress}`;
   const ok = limit(key, 20, 60_000);
 
@@ -126,28 +82,27 @@ export function limitRefresh(request: Request<ReqRefDefaults>, h: ResponseToolki
       .code(429)
       .takeover();
   }
-
   return h.continue;
 }
 
-/** UPLOAD CONCURRENCY (max 3 active uploads per user) */
+/* ----------------- Upload concurrency helpers (typed) ----------------- */
+
 const activeUploads = new Map<number, number>();
 
 export function tryStartUpload(userId: number): boolean {
-  const cur = activeUploads.get(userId) || 0;
+  const cur = activeUploads.get(userId) ?? 0;
   if (cur >= 3) return false;
   activeUploads.set(userId, cur + 1);
   return true;
 }
 
 export function finishUpload(userId: number) {
-  const cur = activeUploads.get(userId) || 0;
+  const cur = activeUploads.get(userId) ?? 0;
   const next = Math.max(0, cur - 1);
   if (next === 0) activeUploads.delete(userId);
   else activeUploads.set(userId, next);
 }
 
-/** UPLOAD quota: max 20 uploads/hour per user */
 export function limitUploadCount(userId: number): boolean {
   return limit(`upload-count:${userId}`, 20, 60 * 60_000);
 }
