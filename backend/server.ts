@@ -1,15 +1,14 @@
 // server.ts
 import Hapi from "@hapi/hapi";
 import ms from "ms";
-import InertPlugin from "./plugins/inert";
+import InertPlugin from "@hapi/inert";
+import { PORT, FRONTEND_URL, JWT_SECRET } from "./config";
 import authRoutes from "./routes/auth";
 import uploadRoutes from "./routes/upload";
-import { PORT, FRONTEND_URL } from "./config";
-import { limitGlobal, limitLogin, limitRefresh } from "./utils/simpleRateLimit";
 
-async function start() {
+async function createServer() {
   const server = Hapi.server({
-    port: PORT,
+    port: PORT || 4000,
     host: "0.0.0.0",
     routes: {
       cors: {
@@ -37,76 +36,56 @@ async function start() {
     },
   });
 
-  // ---------------- Global cookie config ----------------
-  server.state("refresh_token", {
-    ttl: ms("30d"), // 30 days
+  // NOTE: Cookies are NOT HttpOnly intentionally (so client can read them per user's spec).
+  // This is less secure. For production, prefer HttpOnly refresh cookies.
+  server.state("access_token", {
+    ttl: ms("15m"),
     isSecure: process.env.NODE_ENV === "production",
-    isHttpOnly: true,
-    path: "/", // cookie valid site-wide
+    isHttpOnly: false, // <--- readable by JS (as requested)
+    path: "/",
     isSameSite: "Lax",
   });
 
-  // ---------------- Global pre-auth hook ----------------
-  // Runs once (registered at startup) for every incoming request BEFORE auth and route handlers.
-  server.ext("onPreAuth", (request, h) => {
-    // 1) Global per-IP rate limiting (always apply)
-    const globalResult = limitGlobal(request, h);
-    if (globalResult !== h.continue) {
-      // limitGlobal returned a takeover response (429)
-      return globalResult;
-    }
-
-    // 2) Route-specific limits (login & refresh)
-    // Put lightweight per-route checks here so we don't need to edit route files.
-    const path = request.path || "";
-    const method = (request.method || "").toUpperCase();
-
-    // Login route (POST /api/auth/login)
-    if (method === "POST" && path === "/api/auth/login") {
-      const loginResult = limitLogin(request, h);
-      if (loginResult !== h.continue) return loginResult; // takeover on 429
-    }
-
-    // Refresh route (POST /api/auth/refresh)
-    if (method === "POST" && path === "/api/auth/refresh") {
-      const refreshResult = limitRefresh(request, h);
-      if (refreshResult !== h.continue) return refreshResult;
-    }
-
-    // If nothing blocked, continue normal lifecycle
-    return h.continue;
+  server.state("refresh_token", {
+    ttl: ms("7d"),
+    isSecure: process.env.NODE_ENV === "production",
+    isHttpOnly: false, // <--- readable by JS (as requested)
+    path: "/",
+    isSameSite: "Lax",
   });
 
-  // ---------------- Lightweight request logging ----------------
-  server.ext("onRequest", (request, h) => {
-    try {
-      const ct = request.headers["content-type"] || "unknown";
-      console.log(
-        "[onRequest] %s %s content-type=%s remote=%s",
-        request.method.toUpperCase(),
-        request.path,
-        ct,
-        request.info.remoteAddress
-      );
-    } catch (e) {
-      // noop
-    }
-    return h.continue;
+  await server.register(InertPlugin as any);
+  await server.register(require("hapi-auth-jwt2"));
+
+  server.auth.strategy("jwt-auth", "jwt", {
+    key: JWT_SECRET,
+    validate: async (decoded: { userId: any }) => {
+      if (decoded && decoded.userId) {
+        return { isValid: true, credentials: decoded };
+      } else {
+        return { isValid: false };
+      }
+    },
+    verifyOptions: { algorithms: ["HS256"] },
+    tokenType: "",
+    cookieKey: "access_token",
   });
 
-  // Register static asset plugin
-  await server.register(InertPlugin);
-
-  // Register routes
   server.route(authRoutes);
   server.route(uploadRoutes);
 
-  // Start server
-  await server.start();
-  console.log("Server running on %s", server.info.uri);
+  return server;
 }
 
-start().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+if (require.main === module) {
+  (async () => {
+    const server = await createServer();
+    await server.start();
+    console.log("Server running on", server.info.uri);
+  })().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
+
+export default createServer;

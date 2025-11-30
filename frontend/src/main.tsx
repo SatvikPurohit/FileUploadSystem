@@ -9,7 +9,8 @@ import CssBaseline from '@mui/material/CssBaseline'
 import ThemeProvider from '@mui/material/styles/ThemeProvider'
 import theme from './theme'
 import App from './App'
-import './mocks/browser' // start MSW in dev/test environment
+import './mocks/browser'
+import { AuthProvider } from './AuthConext'
 
 const cacheRtl = createCache({ key: 'mui-rtl', stylisPlugins: [stylisPluginRtl] })
 const queryClient = new QueryClient()
@@ -19,9 +20,11 @@ createRoot(document.getElementById('root')!).render(
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <QueryClientProvider client={queryClient}>
+        <AuthProvider>
         <BrowserRouter>
           <App />
         </BrowserRouter>
+        </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>
   </CacheProvider>

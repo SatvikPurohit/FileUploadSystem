@@ -1,8 +1,16 @@
-// src/components/LogoutButton.tsx
-import React from 'react'
-import { Button } from '@mui/material'
-import { logout } from '../hooks/useAuth'
+import Button from "@mui/material/Button";
+import LogoutIcon from "@mui/icons-material/Logout";
+import { logout } from "../api/authClient";
 
 export default function LogoutButton() {
-  return <Button color="error" onClick={() => logout()}>Logout</Button>
+  return (
+    <Button
+      variant="outlined"
+      color="error"
+      startIcon={<LogoutIcon />}
+      onClick={() => logout()}
+    >
+      Logout
+    </Button>
+  );
 }

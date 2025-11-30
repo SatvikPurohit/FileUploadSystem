@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 
 async function main(): Promise<void> {
   try {
-    const email = 'demo@local.test';
+    const email = 'fus@gmail.com';
     const exists = await prisma.user.findUnique({
       where: { email }
     });

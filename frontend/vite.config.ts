@@ -1,3 +1,10 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-export default defineConfig({plugins:[react()],server:{port:5173}})
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  optimizeDeps: {
+    // start broad, then narrow once you find the package
+    exclude: ["your-suspected-package"],
+  },
+  // enable more logs
+  logLevel: "info",
+});

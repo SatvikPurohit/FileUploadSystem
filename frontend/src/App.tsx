@@ -1,8 +1,7 @@
-import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./modules/auth/LoginPage";
 import UploadPage from "./modules/uploads/UploadPage";
-import AppLayout from "./layouts/AppLayout";
+import AppLayout from "./components/AppLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {

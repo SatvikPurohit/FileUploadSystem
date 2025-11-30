@@ -1,62 +1,66 @@
-// src/api/axiosSetup.ts
-import api from './axios';
-import { getAccessToken, setAccessToken, clearAccessToken } from './auth';
-import { refresh as refreshAuth } from '../hooks/useAuth'; // reuse refresh logic
+import api from "./axios";
+import { callRefreshWithLocalStorage } from "./authClient";
 
 let isRefreshing = false;
-let failedQueue: any[] = [];
+let queue: Array<{ resolve: (v?: any) => void; reject: (e: any) => void }> = [];
 
-const processQueue = (err: any, token?: string | null) => {
-  failedQueue.forEach(p => (err ? p.reject(err) : p.resolve(token)));
-  failedQueue = [];
-};
+function processQueue(err: any, token?: string | null) {
+  queue.forEach((p) => (err ? p.reject(err) : p.resolve(token)));
+  queue = [];
+}
 
 api.interceptors.request.use((config) => {
-  const token = getAccessToken();
-  if (token && config.headers) config.headers['Authorization'] = `Bearer ${token}`;
+  config.withCredentials = true;
   return config;
 });
 
 api.interceptors.response.use(
   (res) => res,
-  (error) => {
-    const originalRequest = error.config;
-    if (!originalRequest) return Promise.reject(error);
+  async (error) => {
+    const original = error.config;
+    if (!original) return Promise.reject(error);
 
-    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+    if (error.response && error.response.status === 401 && !original._retry) {
       if (isRefreshing) {
-        return new Promise(function(resolve, reject) {
-          failedQueue.push({ resolve, reject });
-        }).then((token) => {
-          originalRequest.headers['Authorization'] = 'Bearer ' + token;
-          return api(originalRequest);
-        }).catch(err => Promise.reject(err));
+        return new Promise((resolve, reject) =>
+          queue.push({
+            resolve: (token: string) => {
+              original.headers["Authorization"] = "Bearer " + token;
+              resolve(api(original));
+            },
+            reject,
+          })
+        );
       }
 
-      originalRequest._retry = true;
+      original._retry = true;
       isRefreshing = true;
 
-      return new Promise(async (resolve, reject) => {
-        try {
-          const r = await refreshAuth();
-          if (!r.success) {
-            clearAccessToken();
-            processQueue(r.message || 'Refresh failed', null);
-            return reject(r.message);
-          }
-          const newToken = r.accessToken;
-          setAccessToken(newToken);
-          processQueue(null, newToken);
-          originalRequest.headers['Authorization'] = 'Bearer ' + newToken;
-          resolve(api(originalRequest));
-        } catch (e) {
-          processQueue(e, null);
-          reject(e);
-        } finally {
-          isRefreshing = false;
-        }
-      });
+      try {
+        const newAccess = await callRefreshWithLocalStorage();
+        processQueue(null, newAccess);
+        original.headers["Authorization"] = "Bearer " + newAccess;
+        return api(original);
+      } catch (e) {
+        processQueue(e, null);
+        // redirect to login on refresh failure
+        localStorage.removeItem("refresh_token");
+        localStorage.removeItem("access_token");
+        window.location.href = "/login";
+        return Promise.reject(e);
+      } finally {
+        isRefreshing = false;
+      }
     }
+
     return Promise.reject(error);
   }
 );
+
+/* cookie helper for client */
+function readCookie(name: string) {
+  const m = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
+  return m ? decodeURIComponent(m[2]) : null;
+}
+
+export default api;

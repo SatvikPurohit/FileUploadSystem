@@ -5,15 +5,24 @@ import type { BusboyConfig } from "busboy";
 import fs from "fs";
 import path from "path";
 import mkdirp from "mkdirp";
-import { UPLOADS_DIR } from "../config";
+import { FRONTEND_URL, UPLOADS_DIR } from "../config";
 import { validateAuth } from "../utils/auth";
 import prisma from "../prisma/prisma.client";
 
 const routes: ServerRoute[] = [
   {
-    method: "POST",
+    method: ["POST", "OPTIONS"],
     path: "/api/upload",
     options: {
+      cors: {
+        origin: [FRONTEND_URL, "http://localhost:3000"],
+        credentials: true,
+        additionalHeaders: [
+          "authorization",
+          "content-type",
+          "x-requested-with",
+        ],
+      },
       payload: {
         output: "stream",
         parse: false,
@@ -21,6 +30,12 @@ const routes: ServerRoute[] = [
       },
     },
     handler: async (request, h) => {
+      console.log("Upload request received");
+
+      if (request.method === "options") {
+        return h.response().code(200);
+      }
+
       const decoded = await validateAuth(request);
       if (!decoded) return h.response({ message: "Unauthorized" }).code(401);
 

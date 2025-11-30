@@ -1,4 +1,3 @@
-// src/api/auth.ts
 let inMemoryAccessToken: string | null = null;
 
 export function setAccessToken(token: string | null) {

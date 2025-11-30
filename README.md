@@ -31,7 +31,7 @@ Then:
 - Backend API: http://localhost:4000/api
 
 Demo login:
-- Email: `demo@local.test`
+- Email: `fus@gmail.com`
 - Password: `Password123!`
 
 ## individual development
@@ -63,7 +63,7 @@ Backend should be running on port 4000 for frontend.
 - `npm run dev:backend` — backend only
 - `npm run dev:frontend` — frontend only
 - `npm run build` — build both (install deps, generate Prisma, build frontend)
-- `npm run seed` — add demo@local.test user
+- `npm run seed` — add fus@gmail.com user
 - `npm run prisma:studio` — open Prisma Studio to view/edit database
 
 

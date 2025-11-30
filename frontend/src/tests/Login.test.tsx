@@ -5,8 +5,8 @@ import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { worker } from '../mocks/browser'
 
-beforeAll(() => worker.start())
-afterAll(() => worker.stop())
+// beforeAll(() => worker.start())
+// afterAll(() => worker.stop())
 
 test('renders login and performs login flow', async () => {
   const qc = new QueryClient()
@@ -20,7 +20,7 @@ test('renders login and performs login flow', async () => {
 
   const email = screen.getByLabelText(/Email/i)
   const pass = screen.getByLabelText(/Password/i)
-  fireEvent.change(email, { target: { value: 'demo@local.test' } })
+  fireEvent.change(email, { target: { value: 'fus@gmail.com' } })
   fireEvent.change(pass, { target: { value: 'password' } })
   fireEvent.click(screen.getByRole('button', { name: /login/i }))
   await waitFor(() => expect(window.location.pathname).toBe('/upload'))

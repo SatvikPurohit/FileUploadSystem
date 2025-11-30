@@ -1,63 +1,114 @@
-// src/modules/auth/LoginPage.tsx
-import React, { useState } from "react";
+// src/pages/LoginPage.tsx
+import React, { useContext, useState } from "react";
 import {
   Box,
-  Paper,
-  TextField,
   Button,
+  TextField,
   Typography,
-  Alert,
+  Paper,
+  CircularProgress,
 } from "@mui/material";
-import { login } from "../../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import axios from "../../api/axios";
+import { AuthContext } from "../../AuthConext";
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("demo@local.test");
-  const [password, setPassword] = useState("Password123!");
-  const [error, setError] = useState<string | null>(null);
-  const nav = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
+    {}
+  );
+  const [serverError, setServerError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const auth = useContext(AuthContext);
 
-  const submit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
+    setServerError("");
     try {
-      await login(username, password); // sets in-memory access token and server cookie
-      nav("/upload");
+      setLoading(true);
+      const res = await axios.post(
+        "/auth/login",
+        { email, password },
+        { withCredentials: true }
+      );
+
+      if (res.status === 200) {
+        // update auth context so ProtectedRoute sees the user as logged in
+        auth?.login?.();
+        // if you want to re-verify from server: await auth?.verify?.();
+        navigate("/upload");
+      } else {
+        setServerError("Login failed");
+        console.error("login error", res.status, res.data);
+      }
     } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || "Login failed");
+      // prefer the message from server if present
+      const message =
+        err?.response?.data?.message || err.message || "Login failed";
+      setServerError(message);
+      console.error("login exception", err);
+    } finally {
+      setLoading(false);
     }
-  };
+  }
 
   return (
     <Box
-      display="flex"
-      justifyContent="center"
-      alignItems="center"
-      height="80vh"
+      sx={{
+        width: "100%",
+        height: "100vh",
+        bgcolor: "#f5f5f5",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
     >
-      <Paper sx={{ width: 420, p: 3 }}>
-        <Typography variant="h5" align="center">
+      <Paper elevation={4} sx={{ padding: 4, width: 400 }}>
+        <Typography variant="h5" textAlign="center" mb={2}>
           Login
         </Typography>
-        {error && <Alert severity="error">{error}</Alert>}
-        <form onSubmit={submit}>
+
+        <form onSubmit={handleSubmit}>
           <TextField
-            label="Email"
             fullWidth
+            label="Email"
             margin="normal"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            error={!!errors.email}
+            helperText={errors.email}
+            InputLabelProps={{ shrink: true }}
           />
+
           <TextField
+            fullWidth
             label="Password"
             type="password"
-            fullWidth
             margin="normal"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            error={!!errors.password}
+            helperText={errors.password}
+            InputLabelProps={{ shrink: true }}
           />
-          <Button type="submit" variant="contained" fullWidth sx={{ mt: 2 }}>
-            Login
+
+          {serverError && (
+            <Typography color="error" mt={1} textAlign="center">
+              {serverError}
+            </Typography>
+          )}
+
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
+            fullWidth
+            sx={{ mt: 2 }}
+            disabled={loading}
+          >
+            {loading ? <CircularProgress size={22} color="inherit" /> : "Login"}
           </Button>
         </form>
       </Paper>

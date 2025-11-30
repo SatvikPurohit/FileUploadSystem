@@ -1,6 +1,6 @@
-import jwt from 'jsonwebtoken';
-import { Request } from '@hapi/hapi';
-import { JWT_SECRET } from './../config';
+import jwt from "jsonwebtoken";
+import { Request } from "@hapi/hapi";
+import { JWT_SECRET } from "./../config";
 
 export type DecodedToken = {
   userId: number;
@@ -11,14 +11,15 @@ export type DecodedToken = {
 } | null;
 
 export async function validateAuth(request: Request): Promise<DecodedToken> {
-  const auth = (request.headers.authorization as string) || '';
-  if (!auth) return null;
-  const m = /^Bearer (.+)$/.exec(auth);
-  if (!m) return null;
+  const token = (request.state && (request.state as any).access_token) || null;
+  if (!token) {
+    return null;
+  }
   try {
-    const decoded = jwt.verify(m[1], JWT_SECRET) as DecodedToken;
+    const decoded = jwt.verify(token, JWT_SECRET) as DecodedToken;
     return decoded;
-  } catch {
+  } catch (err: any) {
+    console.error("JWT validation error:", err.message);
     return null;
   }
 }
