@@ -20,6 +20,7 @@
     "formidable": "^3.0.0",
     "hapi-auth-jwt2": "^11.0.0",
     "jsonwebtoken": "^9.0.0",
+    "mime-types": "^3.0.2",
     "mkdirp": "^1.0.4",
     "prisma": "^5.0.0"
   },

@@ -32,7 +32,7 @@ export const signRefreshToken = async (
   payload: any
 ): Promise<{ token: string; tokenId: string }> => {
   const tokenId = makeTokenId();
-  const token = JWT.sign({ jti: tokenId, ...payload }, JWT_SECRET, {
+  const token = JWT.sign({ jti: tokenId, sub: payload.sub }, JWT_SECRET, {
     expiresIn: "7d",
   });
 
@@ -82,7 +82,7 @@ export const verifyRefresh = async (token: string) => {
  * Revoke refresh token: clear stored hash for user
  */
 export const revokeRefresh = async (userId: string = "") => {
-  if(!userId) return;
+  if (!userId) return;
   await prisma.user.update({
     where: { id: parseInt(userId) },
     data: { refreshTokenHash: null },
@@ -101,8 +101,8 @@ export const validateAuth = async (
     token = authHeader.slice(7);
   }
   // 2. Fallback to cookie
-  else if ((request as any).state?.access_token) {
-    token = (request as any).state.access_token;
+  else if ((request as any).state?.token) {
+    token = (request as any).state.token;
   }
 
   if (!token) return null;

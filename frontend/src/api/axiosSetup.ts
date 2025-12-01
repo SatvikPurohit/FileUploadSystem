@@ -1,7 +1,6 @@
-// src/api/axios.ts
-import axios from "axios";
 import { tokenStore } from "../tokenStore";
 import { callRefresh } from "./authClient";
+import api from "./axios";
 
 
 type QueueItem = {
@@ -19,12 +18,6 @@ function processQueue(err: any | null, token?: string | null) {
   });
   queue = [];
 }
-
-const api = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE || "",
-  withCredentials: true, // send HttpOnly cookies
-  headers: { "Content-Type": "application/json" },
-});
 
 // attach header from in-memory store
 api.interceptors.request.use((config) => {

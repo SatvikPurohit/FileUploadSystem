@@ -7,7 +7,6 @@ import {
   signAccessToken,
   signRefreshToken,
   verifyCsrf,
-  verifyRefresh,
 } from "../utils/auth";
 import JWT, { JwtPayload } from "jsonwebtoken";
 import crypto from "crypto";
@@ -26,6 +25,11 @@ const routes: ServerRoute[] = [
     path: "/api/auth/refresh",
     options: {
       auth: false,
+      payload: {
+        output: "data",
+        parse: true,
+        allow: "application/json",
+      },
       validate: {
         payload: Joi.object({
           refresh: Joi.string().required(),
@@ -36,56 +40,90 @@ const routes: ServerRoute[] = [
       },
     },
     handler: async (request, h) => {
-      const refresh = (request.state && request.state.refresh_token) || null;
-      if (!refresh)
-        return h.response({ message: "No refresh token" }).code(401);
+      // read refresh_token cookie
+      const refreshToken = (request.state as any)?.refresh_token;
+      if (!refreshToken) {
+        return h.response({ ok: false, error: "no refresh token" }).code(401);
+      }
 
-      const decoded = await verifyRefresh(refresh);
-      if (!decoded)
-        return h.response({ message: "Invalid refresh token" }).code(401);
+      try {
+        // verify refresh token (use different secret or key in production)
+        const payload = JWT.verify(refreshToken, JWT_SECRET) as any;
+        // optionally check token type/expiry/db to ensure it's a valid refresh token
+        const userId =
+          payload?.sub ||
+          payload?.subId ||
+          payload?.sub ||
+          payload?.id ||
+          payload?.sub;
 
-      const userId = (decoded as JwtPayload).sub;
-      // revoke old token (clear hash)
-      await revokeRefresh(userId);
+        if (!userId) {
+          return h
+            .response({ ok: false, error: "invalid refresh token" })
+            .code(401);
+        }
 
-      const accessToken = signAccessToken({ sub: userId });
-      const { token: newRefreshToken } = await signRefreshToken({
-        sub: userId,
-      });
+        // create short-lived access token
+        const accessToken = signAccessToken({ sub: userId });
 
-      // set cookies (HttpOnly), same as before
-      h.state("access_token", accessToken, { ttl: ms("15m") });
-      h.state("refresh_token", newRefreshToken, { ttl: ms("7d") });
+        // Option A: set HttpOnly cookie (recommended)
+        h.state("token", accessToken, {
+          isHttpOnly: true,
+          isSecure: process.env.NODE_ENV === "production",
+          isSameSite: "Lax",
+          path: "/",
+          ttl: 15 * 60 * 1000,
+        });
 
-      return h.response({ accessToken });
+        // Option B: also return token in body if frontend wants to store/use it
+        return h.response({ ok: true, accessToken }).code(200);
+      } catch (err) {
+        console.error("refresh verify failed", err);
+        return h
+          .response({ ok: false, error: "invalid refresh token" })
+          .code(401);
+      }
     },
   },
   {
     method: "POST",
     path: "/api/auth/verify-status",
-    options: { pre: [{ method: verifyCsrf }] },
+    options: {
+      payload: {
+        output: "data",
+        parse: true,
+        allow: "application/json",
+      },
+      auth: false,
+    },
     handler: async (req, h) => {
-      // prefer Authorization header if present, else cookie access_token
-      const authHeader = req.headers.authorization;
-      let token = null;
-      if (authHeader && authHeader.startsWith("Bearer "))
-        token = authHeader.slice(7);
-      else if (req.state && req.state.access_token)
-        token = req.state.access_token;
+      // token could be in cookie 'token' or in Authorization header "Bearer <token>"
+      const token =
+        (req.state && (req.state as any).token) ||
+        (req.headers["authorization"] || "").split(" ")[1];
 
-      if (!token) return h.response({ message: "Unauthorized" }).code(401);
+      if (!token)
+        return h.response({ ok: false, message: "no token" }).code(401);
 
       try {
-        const decoded = JWT.verify(token, JWT_SECRET);
-        return h.response({ ok: true, user: decoded.sub });
+        const payload = JWT.verify(token, JWT_SECRET) as { id?: string };
+        return h.response({ ok: true, userId: payload?.id || null }).code(200);
       } catch (err) {
-        return h.response({ message: "Unauthorized" }).code(401);
+        return h.response({ ok: false, message: "invalid" }).code(401);
       }
     },
   },
   {
     method: "POST",
     path: "/api/auth/logout",
+    options: {
+      payload: {
+        output: "data",
+        parse: true,
+        allow: "application/json",
+      },
+      pre: [{ method: verifyCsrf }],
+    },
     handler: async (request, h) => {
       const refresh = (request.state && request.state.refresh_token) || null;
       if (refresh) {
@@ -98,7 +136,7 @@ const routes: ServerRoute[] = [
       }
 
       // clear cookies (send expired)
-      h.unstate("access_token", { path: "/" });
+      h.unstate("token", { path: "/" });
       h.unstate("refresh_token", { path: "/auth/refresh" });
       h.unstate("csrf_token", { path: "/" });
 
@@ -109,16 +147,24 @@ const routes: ServerRoute[] = [
     method: "POST",
     path: "/api/auth/login",
     options: {
+      payload: {
+        output: "data",
+        parse: true,
+        allow: "application/json",
+      },
       auth: false,
       validate: {
         payload: Joi.object({
-          email: Joi.string().required,
+          email: Joi.string().required(),
+          username: Joi.string().optional(),
           password: Joi.string().min(1).required(),
         })
-          .or("email", "email")
+          .or("email", "username")
           .messages({
-            "object.missing": "Either email or email is required",
+            "object.missing": "Either email or username is required",
             "any.required": "Missing required fields",
+            "string.email": "Email must be a valid email address",
+            "string.min": "Password must be at least {#limit} characters",
           }),
         failAction: (request, h, err) => {
           return h.response({ message: err?.message }).code(400).takeover();
@@ -151,14 +197,43 @@ const routes: ServerRoute[] = [
       // issue tokens
       const accessToken = signAccessToken({ sub: user.id });
       const { token: refreshToken } = await signRefreshToken({ sub: user.id });
-
       const csrf = crypto.randomBytes(24).toString("hex");
 
-      h.state("access_token", accessToken, { ttl: ms("15m") });
-      h.state("refresh_token", refreshToken, { ttl: ms("7d") });
-      h.state("csrf_token", csrf, { ttl: ms("7d") });
+      h.state("token", accessToken, {
+        isHttpOnly: true,
+        isSecure: process.env.NODE_ENV === "production",
+        isSameSite: "Lax",
+        path: "/",
+        ttl: 15 * 60 * 1000,
+      });
 
-      return h.response({ accessToken });
+      // refresh token (keep name 'refresh_token' if your refresh endpoint expects it)
+      h.state("refresh_token", refreshToken, {
+        isHttpOnly: true,
+        isSecure: process.env.NODE_ENV === "production",
+        isSameSite: "Lax",
+        path: "/",
+        ttl: ms("7d"),
+      });
+
+      // csrf for frontend if necessary (non-httpOnly so JS can read it)
+      h.state("csrf_token", csrf, {
+        isHttpOnly: false,
+        isSameSite: "Lax",
+        path: "/",
+        ttl: ms("7d"),
+      });
+
+      const token = JWT.sign({ sub: user.id }, JWT_SECRET, {
+        expiresIn: "15m",
+      });
+      return h.response({ ok: true, accessToken }).state("token", token, {
+        isHttpOnly: true,
+        isSecure: process.env.NODE_ENV === "production",
+        isSameSite: "Lax",
+        path: "/",
+        ttl: 15 * 60 * 1000,
+      });
     },
   },
 ];
