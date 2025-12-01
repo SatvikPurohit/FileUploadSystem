@@ -33,5 +33,5 @@ Notes:
   - POST /api/auth/login { email, password }
   - POST /api/auth/refresh { refresh }
   - POST /api/upload (multipart form-data, field name `file`)
-- Uploads stored in `public/uploads/<userId>` by default.
+- Uploads stored in `public/uploads/` by default.
 - The backend uses the Prisma schema.
