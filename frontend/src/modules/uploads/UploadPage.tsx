@@ -1,4 +1,3 @@
-// src/pages/UploadPage.tsx
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
   Box,
@@ -46,19 +45,25 @@ export default function UploadPage() {
 
   // store file objects out-of-state
   const fileMap = useRef<Map<string, File>>(new Map());
-
   // keep a ref of queue for worker/reads
   const queueRef = useRef<UploadItem[]>(queue);
   useEffect(() => {
     queueRef.current = queue;
   }, [queue]);
 
+  // final guard: ensure id isn't started twice
+  const activeIdsRef = useRef<Set<string>>(new Set());
+  // count of active uploads
+  const activeCountRef = useRef(0);
+  // tasks queue (ids)
+  const tasksRef = useRef<string[]>([]);
+  const workerRunningRef = useRef(false);
+
   // helper to update queue atomically and avoid creating new array if identical
   const updateQueue = useCallback(
     (updater: (prev: UploadItem[]) => UploadItem[]) => {
       setQueue((prev) => {
         const next = updater(prev);
-        // cheap check to avoid churn: if same reference-result wise, return prev
         if (prev.length === next.length && next.every((n, i) => n === prev[i]))
           return prev;
         return next;
@@ -69,6 +74,7 @@ export default function UploadPage() {
 
   // Add files handler
   const handleFiles = (files: File[]) => {
+    // Remove previous "reject if files.length > CONCURRENCY" logic.
     const items: UploadItem[] = files.map((f) => {
       const id =
         (globalThis as any).crypto?.randomUUID?.() ??
@@ -102,7 +108,13 @@ export default function UploadPage() {
         progress: 0,
       } as UploadItem;
     });
+
+    // Append all new items to the queue (worker will only start up to CONCURRENCY items)
     updateQueue((prev) => [...prev, ...items]);
+
+    // ensure worker picks them up
+    enqueuePendingIds();
+    startWorker();
   };
 
   const { getRootProps, getInputProps } = useDropzone({
@@ -111,38 +123,53 @@ export default function UploadPage() {
   });
 
   // Upload single file using axios — accepts AbortSignal and reports progress.
-  const uploadSingle = async (
-    item: UploadItem,
-    signal?: AbortSignal
-  ): Promise<UploadResult> => {
-    const file = fileMap.current.get(item.id);
-    if (!file) throw new Error("File not found");
+  const uploadSingle = useCallback(
+    async (item: UploadItem, signal?: AbortSignal): Promise<UploadResult> => {
+      const file = fileMap.current.get(item.id);
+      if (!file) throw new Error("File not found");
 
-    const form = new FormData();
-    form.append("file", file);
+      const form = new FormData();
+      form.append("file", file);
 
-    const res = await axios.post("/upload", form, {
-      withCredentials: true,
-      signal,
-      onUploadProgress: (progressEvent: AxiosProgressEvent) => {
-        const loaded = progressEvent.loaded ?? 0;
-        const total = progressEvent.total ?? file.size;
-        const pct = total ? Math.round((loaded * 100) / total) : 0;
-        updateQueue((prev) =>
-          prev.map((it) => (it.id === item.id ? { ...it, progress: pct } : it))
-        );
-      },
+      const res = await axios.post("/upload", form, {
+        withCredentials: true,
+        signal,
+        onUploadProgress: (progressEvent: AxiosProgressEvent) => {
+          const loaded = progressEvent.loaded ?? 0;
+          const total = progressEvent.total ?? file.size;
+          const pct = total ? Math.round((loaded * 100) / total) : 0;
+          updateQueue((prev) =>
+            prev.map((it) =>
+              it.id === item.id ? { ...it, progress: pct } : it
+            )
+          );
+        },
+      });
+
+      return res.data;
+    },
+    [updateQueue]
+  );
+
+  // enqueue pending ids (syncs tasksRef to any new PENDINGs)
+  const enqueuePendingIds = useCallback(() => {
+    const cur = queueRef.current;
+    const pending = cur.filter((p) => p.status === "PENDING").map((p) => p.id);
+    const set = new Set(tasksRef.current);
+    pending.forEach((id) => {
+      if (!set.has(id)) {
+        tasksRef.current.push(id);
+        set.add(id);
+      }
     });
+  }, []);
 
-    return res.data;
-  };
-
-  // mutation with success/error handlers (decrement activeCountRef and restart worker)
-  const activeCountRef = useRef(0);
+  // mutation with success/error handlers — defined after worker so startWorker exists
   const mutation = useMutation<UploadResult, Error, MutVars, unknown>({
     mutationFn: async (vars: MutVars) => uploadSingle(vars.item, vars.signal),
 
     onSuccess: (_data, vars) => {
+      // mark success
       updateQueue((prev) =>
         prev.map((it) =>
           it.id === vars.item.id
@@ -150,9 +177,11 @@ export default function UploadPage() {
             : it
         )
       );
-      // decrement active count and trigger worker
+      // housekeeping
       activeCountRef.current = Math.max(0, activeCountRef.current - 1);
-      startWorker(); // forward-declared below
+      activeIdsRef.current.delete(vars.item.id);
+      // trigger worker to pick next
+      startWorker();
       setSnack({
         open: true,
         msg: `Uploaded ${vars.item.fileName}`,
@@ -172,8 +201,8 @@ export default function UploadPage() {
             : it
         )
       );
-      // decrement active count and trigger worker
       activeCountRef.current = Math.max(0, activeCountRef.current - 1);
+      activeIdsRef.current.delete(vars.item.id);
       startWorker();
       setSnack({
         open: true,
@@ -183,25 +212,7 @@ export default function UploadPage() {
     },
   });
 
-  // Worker queue: tasksRef contains pending IDs to process sequentially
-  const tasksRef = useRef<string[]>([]);
-  // worker running flag
-  const workerRunningRef = useRef(false);
-
-  // enqueue pending ids (syncs tasksRef to any new PENDINGs)
-  const enqueuePendingIds = useCallback(() => {
-    const cur = queueRef.current;
-    const pending = cur.filter((p) => p.status === "PENDING").map((p) => p.id);
-    const set = new Set(tasksRef.current);
-    pending.forEach((id) => {
-      if (!set.has(id)) {
-        tasksRef.current.push(id);
-        set.add(id);
-      }
-    });
-  }, []);
-
-  // worker: single place that starts uploads and respects concurrency
+  // worker: single place that starts uploads and respects concurrency (uses tasksRef)
   const startWorker = useCallback(() => {
     if (workerRunningRef.current) return;
     workerRunningRef.current = true;
@@ -212,21 +223,24 @@ export default function UploadPage() {
           // if no tasks, break
           if (!tasksRef.current.length) break;
 
-          // enforce concurrency
-          if (activeCountRef.current >= CONCURRENCY) {
-            // wait before retrying
-            await new Promise((r) => setTimeout(r, 120));
-            continue;
-          }
+          // HARD concurrency limit: stop if >= CONCURRENCY
+          if (activeCountRef.current >= CONCURRENCY) break;
 
           const id = tasksRef.current.shift()!;
-          // validate item is still PENDING
           const it = queueRef.current.find((x) => x.id === id);
           if (!it || it.status !== "PENDING") {
             continue;
           }
 
-          // reserve a slot
+          // final guard: skip if already active
+          if (activeIdsRef.current.has(id)) {
+            continue;
+          }
+
+          // reserve id immediately
+          activeIdsRef.current.add(id);
+
+          // attach controller & flip state
           const controller = new AbortController();
           updateQueue((prev) =>
             prev.map((x) =>
@@ -236,16 +250,15 @@ export default function UploadPage() {
             )
           );
 
-          // increment active count
           activeCountRef.current += 1;
 
-          // start upload (do not await; mutation handles completion)
+          // start upload (mutation handles completion)
           mutation.mutate({
             item: { ...it, controller },
             signal: controller.signal,
           });
 
-          // micro-yield
+          // micro-yield so other tasks can be queued
           await new Promise((r) => setTimeout(r, 0));
         }
       } finally {
@@ -263,11 +276,9 @@ export default function UploadPage() {
 
   // Cancel a specific item
   const cancelItem = (id: string) => {
-    // If the item was uploading, decrement activeCountRef
-    const wasUploading =
-      queueRef.current.find(
-        (it) => it.id === id && it.status === "UPLOADING"
-      ) !== undefined;
+    const wasUploading = queueRef.current.some(
+      (it) => it.id === id && it.status === "UPLOADING"
+    );
     if (wasUploading) {
       activeCountRef.current = Math.max(0, activeCountRef.current - 1);
     }
@@ -276,6 +287,7 @@ export default function UploadPage() {
       prev.map((it) => {
         if (it.id === id) {
           it.controller?.abort();
+          activeIdsRef.current.delete(id);
           return {
             ...it,
             status: "CANCELLED",
@@ -300,7 +312,6 @@ export default function UploadPage() {
           : it
       )
     );
-    // enqueue & restart worker
     enqueuePendingIds();
     startWorker();
   };
@@ -309,13 +320,12 @@ export default function UploadPage() {
   const removeItem = (id: string) => {
     updateQueue((prev) => prev.filter((it) => it.id !== id));
     fileMap.current.delete(id);
-    // ensure tasks are cleaned up if they existed
     tasksRef.current = tasksRef.current.filter((tid) => tid !== id);
+    activeIdsRef.current.delete(id);
   };
 
   // Cancel all
   const cancelAll = () => {
-    // count how many uploading to decrement activeCountRef
     const uploadingCount = queueRef.current.filter(
       (it) => it.status === "UPLOADING"
     ).length;
@@ -326,7 +336,6 @@ export default function UploadPage() {
 
     updateQueue((prev) => {
       prev.forEach((it) => it.controller?.abort());
-      // mark non-success as cancelled
       return prev.map((it) =>
         it.status === "SUCCESS"
           ? it
@@ -334,10 +343,8 @@ export default function UploadPage() {
       );
     });
 
-    // clear pending tasks too
     tasksRef.current = [];
     setSnack({ open: true, msg: "All uploads cancelled", severity: "info" });
-    // allow worker to exit or pick up anything new later
     startWorker();
   };
 
@@ -349,29 +356,26 @@ export default function UploadPage() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="h6">Document Upload</Typography>
-          <Box>
-            <Button
-              onClick={cancelAll}
-              startIcon={<CancelIcon />}
-              disabled={!hasCancellable}
-            >
-              Cancel All
-            </Button>
-            <Button
-              onClick={() =>
-                updateQueue((q) => q.filter((it) => it.status !== "SUCCESS"))
-              }
-              startIcon={<DeleteIcon />}
-              disabled={successCount === 0}
-            >
-              Clear Completed
-            </Button>
-          </Box>
-        </Box>
-      </Paper>
+      <Box display="flex" alignItems="center" gap={2}>
+        <Button
+          onClick={cancelAll}
+          startIcon={<CancelIcon />}
+          disabled={!hasCancellable}
+        >
+          Cancel All
+        </Button>
+        <Button
+          onClick={() =>
+            updateQueue((q) => q.filter((it) => it.status !== "SUCCESS"))
+          }
+          startIcon={<DeleteIcon />}
+          disabled={successCount === 0}
+        >
+          Clear Completed
+        </Button>
+      </Box>
+
+      <ConcurrencyDemo queue={queue} />
 
       <Paper
         {...getRootProps()}
@@ -400,8 +404,49 @@ export default function UploadPage() {
                 secondary={`${(it.fileSize / 1024 / 1024).toFixed(2)} MB`}
               />
               <Box sx={{ width: "40%", mr: 2 }}>
-                <LinearProgress variant="determinate" value={it.progress} />
-                <Typography variant="caption">
+                <LinearProgress
+                  variant="determinate"
+                  value={it.progress}
+                  sx={{
+                    height: 8,
+                    borderRadius: 5,
+                    "& .MuiLinearProgress-bar": {
+                      backgroundColor:
+                        it.status === "SUCCESS"
+                          ? "success.main"
+                          : it.status === "FAILED"
+                          ? "error.main"
+                          : it.status === "PENDING"
+                          ? "warning.main"
+                          : it.status === "CANCELLED"
+                          ? "error.main"
+                          : "info.main", // UPLOADING
+                    },
+                    backgroundColor:
+                      it.status === "PENDING"
+                        ? "warning.light"
+                        : it.status === "FAILED" || it.status === "CANCELLED"
+                        ? "error.light"
+                        : "grey.300",
+                  }}
+                />
+
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontWeight: 600,
+                    color:
+                      it.status === "SUCCESS"
+                        ? "success.main"
+                        : it.status === "FAILED"
+                        ? "error.main"
+                        : it.status === "PENDING"
+                        ? "warning.main"
+                        : it.status === "CANCELLED"
+                        ? "error.main"
+                        : "info.main",
+                  }}
+                >
                   {it.status}
                   {it.error ? " — " + it.error : ""}
                 </Typography>
@@ -436,3 +481,45 @@ export default function UploadPage() {
     </Box>
   );
 }
+
+const ConcurrencyDemo = ({ queue }: { queue: UploadItem[] }) => {
+  return (
+    <Box sx={{ mt: 2, mb: 2 }}>
+      <Typography variant="subtitle2">
+        Uploading (max {CONCURRENCY}):
+      </Typography>
+      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 1 }}>
+        {queue
+          .filter((it) => it.status === "UPLOADING")
+          .map((it) => (
+            <Paper key={it.id} sx={{ px: 1, py: 0.5, bgcolor: "info.light" }}>
+              <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                {it.fileName}
+              </Typography>
+            </Paper>
+          ))}
+        {queue.filter((it) => it.status === "UPLOADING").length === 0 && (
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
+            (none)
+          </Typography>
+        )}
+      </Box>
+
+      <Typography variant="subtitle2">Waiting:</Typography>
+      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+        {queue
+          .filter((it) => it.status === "PENDING")
+          .map((it) => (
+            <Paper key={it.id} sx={{ px: 1, py: 0.5, bgcolor: "grey.100" }}>
+              <Typography variant="caption">{it.fileName}</Typography>
+            </Paper>
+          ))}
+        {queue.filter((it) => it.status === "PENDING").length === 0 && (
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
+            (none)
+          </Typography>
+        )}
+      </Box>
+    </Box>
+  );
+};
