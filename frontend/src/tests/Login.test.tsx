@@ -9,7 +9,7 @@ jest.mock("../authClient");
 
 test("shows validation error if empty", async () => {
   render(
-    <AuthContext.Provider value={{ isAuthenticated: false, isLoading: false, login: jest.fn(), logout: jest.fn(), verify: jest.fn() }}>
+    <AuthContext.Provider value={{ isAuthenticated: false, isLoading: false, login: jest.fn(), logout: jest.fn() }}>
       <LoginPage />
     </AuthContext.Provider>
   );
@@ -21,7 +21,7 @@ test("successful login calls authClient and navigates", async () => {
   (authClient.login as jest.Mock).mockResolvedValue("token");
   const loginMock = jest.fn();
   render(
-    <AuthContext.Provider value={{ isAuthenticated: false, isLoading: false, login: loginMock, logout: jest.fn(), verify: jest.fn() }}>
+    <AuthContext.Provider value={{ isAuthenticated: false, isLoading: false, login: loginMock, logout: jest.fn() }}>
       <LoginPage />
     </AuthContext.Provider>
   );

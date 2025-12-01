@@ -15,10 +15,13 @@
 # install dependencies in both backend and frontend
 npm install
 
-# setup database
+# setup backend
 npm run build:backend
 
-# seed demo user
+# setup frontend
+npm run build:frontend
+
+# seed db demo user
 npm run seed
 
 # start both backend and frontend (requires concurrently)
