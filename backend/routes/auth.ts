@@ -199,29 +199,28 @@ const routes: ServerRoute[] = [
       const { token: refreshToken } = await signRefreshToken({ sub: user.id });
       const csrf = crypto.randomBytes(24).toString("hex");
 
+      // set access token
       h.state("token", accessToken, {
         isHttpOnly: true,
-        isSecure: process.env.NODE_ENV === "production",
-        isSameSite: "Lax",
         path: "/",
-        ttl: 15 * 60 * 1000,
+        isSameSite: "None",
+        isSecure: false, // allowed on localhost
       });
 
-      // refresh token (keep name 'refresh_token' if your refresh endpoint expects it)
+      // set refresh token
       h.state("refresh_token", refreshToken, {
         isHttpOnly: true,
-        isSecure: process.env.NODE_ENV === "production",
-        isSameSite: "Lax",
         path: "/",
-        ttl: ms("7d"),
+        isSameSite: "None",
+        isSecure: false,
       });
 
-      // csrf for frontend if necessary (non-httpOnly so JS can read it)
+      // set csrf token
       h.state("csrf_token", csrf, {
         isHttpOnly: false,
-        isSameSite: "Lax",
         path: "/",
-        ttl: ms("7d"),
+        isSameSite: "None",
+        isSecure: false,
       });
 
       const token = JWT.sign({ sub: user.id }, JWT_SECRET, {

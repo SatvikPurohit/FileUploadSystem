@@ -18,9 +18,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const auth = useContext(AuthContext);
-  const [error, setError] = useState<string>(
-    ""
-  );
+  const [error, setError] = useState<string>("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,13 +35,16 @@ export default function LoginPage() {
       auth?.login?.();
       navigate("/upload");
     } catch (err: any) {
-      setError(
-        err?.response?.data?.message || err.message || "Login failed"
-      );
+      setError(err?.response?.data?.message || err.message || "Login failed");
     } finally {
       setLoading(false);
     }
   };
+
+  const setPasswordFunc = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setPassword(e.target.value);
+  const setEmailFunc = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setEmail(e.target.value);
 
   return (
     <Box
@@ -67,7 +68,7 @@ export default function LoginPage() {
             label="Email"
             margin="normal"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={setEmailFunc}
             error={!!error}
             helperText={error}
             InputLabelProps={{ shrink: true }}
@@ -79,10 +80,11 @@ export default function LoginPage() {
             type="password"
             margin="normal"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={setPasswordFunc}
             error={!!error}
             helperText={error}
             InputLabelProps={{ shrink: true }}
+            inputProps={{ style: { fontFamily: "text-security-disc" } }}
           />
 
           {error && (
