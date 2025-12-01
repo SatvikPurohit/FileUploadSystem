@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Box,
   Paper,
@@ -18,10 +18,11 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useDropzone } from "react-dropzone";
-import { useMutation,  } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { AxiosProgressEvent } from "axios";
 import axios from "../../api/axios";
 import type { UploadItem } from "../../types";
+// import PQueue from "p-queue";
 
 type MutVars = { item: UploadItem; signal?: AbortSignal };
 type UploadResult = unknown;
@@ -34,6 +35,7 @@ const ALLOWED = [
 ];
 const MAX_BYTES = 10 * 1024 * 1024;
 const CONCURRENCY = 3;
+// const queue = new PQueue({ concurrency: CONCURRENCY });
 
 export default function UploadPage() {
   const [queue, setQueue] = useState<UploadItem[]>([]);
@@ -102,7 +104,6 @@ export default function UploadPage() {
 
     const res = await axios.post("/upload", form, {
       signal,
-      headers: { "Content-Type": "multipart/form-data" },
       // Use AxiosProgressEvent type from axios
       onUploadProgress: (progressEvent: AxiosProgressEvent) => {
         const loaded = progressEvent.loaded ?? 0;
@@ -129,7 +130,7 @@ export default function UploadPage() {
       setQueue((q) =>
         q.map((it) =>
           it.id === vars.item.id
-            ? { ...it, progress: 100, status: "SUCCESS" }
+            ? { ...it, progress: 100, status: "SUCCESS", controller: undefined }
             : it
         )
       );
@@ -149,7 +150,7 @@ export default function UploadPage() {
       setQueue((q) =>
         q.map((it) =>
           it.id === vars.item.id
-            ? { ...it, status: "FAILED", error: message }
+            ? { ...it, status: "FAILED", error: message, controller: undefined }
             : it
         )
       );
@@ -179,7 +180,9 @@ export default function UploadPage() {
         // attach controller to queue item so cancel can abort it
         setQueue((q) =>
           q.map((it) =>
-            it.id === item.id ? { ...it, status: "UPLOADING", controller } : it
+            it.id === item.id && it.status === "PENDING"
+              ? { ...it, status: "UPLOADING", controller }
+              : it
           )
         );
 
@@ -201,7 +204,7 @@ export default function UploadPage() {
       q.map((it) => {
         if (it.id === id) {
           it.controller?.abort();
-          return { ...it, status: "CANCELLED", error: "Cancelled by user" };
+          return { ...it, status: "CANCELLED", error: "Cancelled by user", controller: undefined};
         }
         return it;
       })

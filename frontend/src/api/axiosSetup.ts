@@ -1,31 +1,52 @@
-import api from "./axios";
-import { callRefreshWithLocalStorage } from "./authClient";
+// src/api/axios.ts
+import axios from "axios";
+import { tokenStore } from "../tokenStore";
+import { callRefresh } from "./authClient";
+
+
+type QueueItem = {
+  resolve: (token?: string | null) => void;
+  reject: (err?: any) => void;
+};
 
 let isRefreshing = false;
-let queue: Array<{ resolve: (v?: any) => void; reject: (e: any) => void }> = [];
+let queue: QueueItem[] = [];
 
-function processQueue(err: any, token?: string | null) {
-  queue.forEach((p) => (err ? p.reject(err) : p.resolve(token)));
+function processQueue(err: any | null, token?: string | null) {
+  queue.forEach((p) => {
+    if (err) p.reject(err);
+    else p.resolve(token);
+  });
   queue = [];
 }
 
+const api = axios.create({
+  baseURL: process.env.REACT_APP_API_BASE || "",
+  withCredentials: true, // send HttpOnly cookies
+  headers: { "Content-Type": "application/json" },
+});
+
+// attach header from in-memory store
 api.interceptors.request.use((config) => {
   config.withCredentials = true;
+  const token = tokenStore.get();
+  if (token && config.headers) config.headers["Authorization"] = `Bearer ${token}`;
   return config;
 });
 
+
 api.interceptors.response.use(
-  (res) => res,
+  (r) => r,
   async (error) => {
     const original = error.config;
     if (!original) return Promise.reject(error);
 
-    if (error.response && error.response.status === 401 && !original._retry) {
+    if (error.response?.status === 401 && !original._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) =>
           queue.push({
-            resolve: (token: string) => {
-              original.headers["Authorization"] = "Bearer " + token;
+            resolve: (token?: string | null) => {
+              if (original.headers) original.headers["Authorization"] = "Bearer " + token;
               resolve(api(original));
             },
             reject,
@@ -35,17 +56,15 @@ api.interceptors.response.use(
 
       original._retry = true;
       isRefreshing = true;
-
       try {
-        const newAccess = await callRefreshWithLocalStorage();
+        const newAccess = await callRefresh(); // server reads refresh cookie and returns new access
         processQueue(null, newAccess);
-        original.headers["Authorization"] = "Bearer " + newAccess;
+        if (original.headers) original.headers["Authorization"] = "Bearer " + newAccess;
         return api(original);
       } catch (e) {
         processQueue(e, null);
-        // redirect to login on refresh failure
-        localStorage.removeItem("refresh_token");
-        localStorage.removeItem("access_token");
+        // on refresh failure, clear memory token and redirect to login
+        tokenStore.clear();
         window.location.href = "/login";
         return Promise.reject(e);
       } finally {
@@ -56,11 +75,5 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
-/* cookie helper for client */
-function readCookie(name: string) {
-  const m = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
-  return m ? decodeURIComponent(m[2]) : null;
-}
 
 export default api;

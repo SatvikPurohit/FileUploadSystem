@@ -1,19 +1,24 @@
 import { ServerRoute } from "@hapi/hapi";
 import Joi from "joi";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config";
-import prisma from "../prisma/prisma.client";
 import ms from "ms";
+import {
+  revokeRefresh,
+  signAccessToken,
+  signRefreshToken,
+  verifyCsrf,
+  verifyRefresh,
+} from "../utils/auth";
+import JWT, { JwtPayload } from "jsonwebtoken";
+import crypto from "crypto";
+import prisma from "../prisma/prisma.client";
+import bcrypt from "bcryptjs";
+import { Request, ResponseToolkit } from "@hapi/hapi";
 
-/**
- * Payload type (for TS only; Joi handles runtime validation)
- */
-type LoginPayload = {
-  email?: string;
-  username?: string;
-  password?: string;
-};
+interface LoginPayload {
+  email: string;
+  password: string;
+}
 
 const routes: ServerRoute[] = [
   {
@@ -31,78 +36,50 @@ const routes: ServerRoute[] = [
       },
     },
     handler: async (request, h) => {
-      const { refresh } = request.payload as { refresh: string };
+      const refresh = (request.state && request.state.refresh_token) || null;
+      if (!refresh)
+        return h.response({ message: "No refresh token" }).code(401);
 
-      try {
-        const decoded = jwt.verify(refresh, JWT_SECRET) as { userId: number };
-        const user = await prisma.user.findUnique({
-          where: { id: decoded.userId },
-        });
+      const decoded = await verifyRefresh(refresh);
+      if (!decoded)
+        return h.response({ message: "Invalid refresh token" }).code(401);
 
-        if (!user || !user.refreshTokenHash) {
-          return h.response({ message: "Invalid refresh" }).code(401);
-        }
+      const userId = (decoded as JwtPayload).sub;
+      // revoke old token (clear hash)
+      await revokeRefresh(userId);
 
-        const ok = await bcrypt.compare(refresh, user.refreshTokenHash);
-        if (!ok) return h.response({ message: "Invalid refresh" }).code(401);
+      const accessToken = signAccessToken({ sub: userId });
+      const { token: newRefreshToken } = await signRefreshToken({
+        sub: userId,
+      });
 
-        // rotate refresh token
-        const newRefresh = jwt.sign({ userId: user.id }, JWT_SECRET, {
-          expiresIn: "7d",
-        });
-        const newHash = await bcrypt.hash(newRefresh, 8);
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { refreshTokenHash: newHash },
-        });
+      // set cookies (HttpOnly), same as before
+      h.state("access_token", accessToken, { ttl: ms("15m") });
+      h.state("refresh_token", newRefreshToken, { ttl: ms("7d") });
 
-        const newAccess = jwt.sign(
-          { userId: user.id, email: user.email },
-          JWT_SECRET,
-          {
-            expiresIn: "15m",
-          }
-        );
-
-        // set cookies again
-        h.state("access_token", newAccess, {
-          ttl: ms("15m"),
-          isHttpOnly: false,
-          isSameSite: "Lax",
-          path: "/",
-        });
-        h.state("refresh_token", newRefresh, {
-          ttl: ms("7d"),
-          isHttpOnly: false,
-          isSameSite: "Lax",
-          path: "/",
-        });
-
-        return h.response({ accessToken: newAccess }).code(200);
-      } catch (e) {
-        return h.response({ message: "Invalid refresh" }).code(401);
-      }
+      return h.response({ accessToken });
     },
   },
   {
-    method: "GET",
+    method: "POST",
     path: "/api/auth/verify-status",
-    handler: (request, h) => {
-      const token = (request.state && (request.state as any).token) || null;
+    options: { pre: [{ method: verifyCsrf }] },
+    handler: async (req, h) => {
+      // prefer Authorization header if present, else cookie access_token
+      const authHeader = req.headers.authorization;
+      let token = null;
+      if (authHeader && authHeader.startsWith("Bearer "))
+        token = authHeader.slice(7);
+      else if (req.state && req.state.access_token)
+        token = req.state.access_token;
 
-      if (!token) {
-        return h.response({ ok: false, message: "no token" }).code(401);
-      }
+      if (!token) return h.response({ message: "Unauthorized" }).code(401);
 
       try {
-        const payload = jwt.verify(token, JWT_SECRET) as {
-          id: string;
-          [k: string]: any;
-        };
-
-        return h.response({ ok: true, userId: payload.id }).code(200);
+        const decoded = JWT.verify(token, JWT_SECRET);
+        return h.response({ ok: true, user: decoded.sub });
       } catch (err) {
-        return h.response({ ok: false, message: "invalid token" }).code(401);
+        return h.response({ message: "Unauthorized" }).code(401);
       }
     },
   },
@@ -110,28 +87,22 @@ const routes: ServerRoute[] = [
     method: "POST",
     path: "/api/auth/logout",
     handler: async (request, h) => {
-      // clear stored hash (optional)
-      const refreshToken =
-        (request.payload as any)?.refresh ||
-        (request.state as any)?.refresh_token;
-      try {
-        if (refreshToken) {
-          const decoded = jwt.verify(refreshToken, JWT_SECRET) as any;
-          if (decoded?.userId) {
-            await prisma.user.update({
-              where: { id: decoded.userId },
-              data: { refreshTokenHash: null },
-            });
-          }
+      const refresh = (request.state && request.state.refresh_token) || null;
+      if (refresh) {
+        try {
+          const decoded = JWT.verify(refresh, JWT_SECRET) as JwtPayload;
+          if (decoded && decoded.sub) await revokeRefresh(decoded.sub);
+        } catch (e) {
+          return h.response({ message: "" }).code(500);
         }
-      } catch (e) {
-        // ignore
       }
 
+      // clear cookies (send expired)
       h.unstate("access_token", { path: "/" });
-      h.unstate("refresh_token", { path: "/" });
+      h.unstate("refresh_token", { path: "/auth/refresh" });
+      h.unstate("csrf_token", { path: "/" });
 
-      return h.response({ ok: true }).code(200);
+      return h.response({ ok: true });
     },
   },
   {
@@ -141,13 +112,12 @@ const routes: ServerRoute[] = [
       auth: false,
       validate: {
         payload: Joi.object({
-          email: Joi.string().email().optional(),
-          username: Joi.string().optional(),
+          email: Joi.string().required,
           password: Joi.string().min(1).required(),
         })
-          .or("email", "username")
+          .or("email", "email")
           .messages({
-            "object.missing": "Either email or username is required",
+            "object.missing": "Either email or email is required",
             "any.required": "Missing required fields",
           }),
         failAction: (request, h, err) => {
@@ -155,62 +125,40 @@ const routes: ServerRoute[] = [
         },
       },
     },
-    handler: async (request, h) => {
-      const payload = request.payload as any;
-      const identifier = (payload.email ?? payload.username ?? "").trim();
-      const password = (payload.password ?? "").toString();
+    handler: async (request: Request, h: ResponseToolkit) => {
+      const payload = request.payload as LoginPayload;
+      const { email, password } = payload;
+
+      if (!password || !email) {
+        return h
+          .response({ message: "username/email and password required" })
+          .code(400);
+      }
 
       const user = await prisma.user.findUnique({
-        where: { email: identifier },
+        where: { email: email },
       });
 
       if (!user) {
         return h.response({ message: "Invalid credentials" }).code(401);
       }
 
-      const ok = await bcrypt.compare(password, user.password);
-      if (!ok) {
+      const match = await bcrypt.compare(password, user.password);
+      if (!match) {
         return h.response({ message: "Invalid credentials" }).code(401);
       }
 
-      // create tokens
-      const accessToken = jwt.sign(
-        { userId: user.id, email: user.email },
-        JWT_SECRET,
-        {
-          expiresIn: "15m",
-        }
-      );
+      // issue tokens
+      const accessToken = signAccessToken({ sub: user.id });
+      const { token: refreshToken } = await signRefreshToken({ sub: user.id });
 
-      const refreshToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
-        expiresIn: "7d",
-      });
+      const csrf = crypto.randomBytes(24).toString("hex");
 
-      // store hashed refresh token on user row (rotation)
-      const hash = await bcrypt.hash(refreshToken, 8);
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { refreshTokenHash: hash },
-      });
+      h.state("access_token", accessToken, { ttl: ms("15m") });
+      h.state("refresh_token", refreshToken, { ttl: ms("7d") });
+      h.state("csrf_token", csrf, { ttl: ms("7d") });
 
-      // set cookies (non HttpOnly so client can read them per spec)
-      h.state("access_token", accessToken, {
-        ttl: ms("15m"),
-        isSecure: process.env.NODE_ENV === "production",
-        isHttpOnly: false,
-        path: "/",
-        isSameSite: "Lax",
-      });
-
-      h.state("refresh_token", refreshToken, {
-        ttl: ms("7d"),
-        isSecure: process.env.NODE_ENV === "production",
-        isHttpOnly: false,
-        path: "/",
-        isSameSite: "Lax",
-      });
-
-      return h.response({ ok: true, accessToken }).code(200);
+      return h.response({ accessToken });
     },
   },
 ];

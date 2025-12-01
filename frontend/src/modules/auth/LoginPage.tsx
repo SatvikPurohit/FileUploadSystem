@@ -9,50 +9,41 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import axios from "../../api/axios";
 import { AuthContext } from "../../AuthConext";
+import { login as loginClient } from "../../api/authClient";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
-    {}
-  );
-  const [serverError, setServerError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const auth = useContext(AuthContext);
+  const [error, setError] = useState<string>(
+    ""
+  );
 
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setServerError("");
+    let newError = "";
+
+    if (!email) newError = "Email required";
+    if (!password) newError = "Password required";
+
+    setError(newError);
+
     try {
       setLoading(true);
-      const res = await axios.post(
-        "/auth/login",
-        { email, password },
-        { withCredentials: true }
-      );
-
-      if (res.status === 200) {
-        // update auth context so ProtectedRoute sees the user as logged in
-        auth?.login?.();
-        // if you want to re-verify from server: await auth?.verify?.();
-        navigate("/upload");
-      } else {
-        setServerError("Login failed");
-        console.error("login error", res.status, res.data);
-      }
+      await loginClient(email, password);
+      auth?.login?.();
+      navigate("/upload");
     } catch (err: any) {
-      // prefer the message from server if present
-      const message =
-        err?.response?.data?.message || err.message || "Login failed";
-      setServerError(message);
-      console.error("login exception", err);
+      setError(
+        err?.response?.data?.message || err.message || "Login failed"
+      );
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <Box
@@ -77,8 +68,8 @@ export default function LoginPage() {
             margin="normal"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            error={!!errors.email}
-            helperText={errors.email}
+            error={!!error}
+            helperText={error}
             InputLabelProps={{ shrink: true }}
           />
 
@@ -89,14 +80,14 @@ export default function LoginPage() {
             margin="normal"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            error={!!errors.password}
-            helperText={errors.password}
+            error={!!error}
+            helperText={error}
             InputLabelProps={{ shrink: true }}
           />
 
-          {serverError && (
+          {error && (
             <Typography color="error" mt={1} textAlign="center">
-              {serverError}
+              Login Request: {error}
             </Typography>
           )}
 

@@ -1,8 +1,8 @@
 import { rest } from 'msw'
 export const handlers = [
   rest.post('http://localhost:4000/api/auth/login', async (req, res, ctx) => {
-    const { username, password } = await req.json()
-    if (username === 'fus@gmail.com' && password === 'Password123!') {
+    const { email, password } = await req.json()
+    if (email === 'fus@gmail.com' && password === 'Password123!') {
       return res(ctx.json({ accessToken: 'mock-access-token' }))
     }
     return res(ctx.status(401), ctx.json({ error: 'Invalid credentials' }))

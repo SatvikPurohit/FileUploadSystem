@@ -1,27 +1,32 @@
-import React from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import LoginPage from '../modules/auth/LoginPage'
-import { BrowserRouter } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { worker } from '../mocks/browser'
+// src/__tests__/LoginPage.test.tsx
+import React from "react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import LoginPage from "../modules/auth/LoginPage";
+import { AuthContext } from "../AuthConext";
+import * as authClient from "../api/authClient";
 
-// beforeAll(() => worker.start())
-// afterAll(() => worker.stop())
+jest.mock("../authClient");
 
-test('renders login and performs login flow', async () => {
-  const qc = new QueryClient()
+test("shows validation error if empty", async () => {
   render(
-    <QueryClientProvider client={qc}>
-      <BrowserRouter>
-        <LoginPage />
-      </BrowserRouter>
-    </QueryClientProvider>
-  )
+    <AuthContext.Provider value={{ isAuthenticated: false, isLoading: false, login: jest.fn(), logout: jest.fn(), verify: jest.fn() }}>
+      <LoginPage />
+    </AuthContext.Provider>
+  );
+  fireEvent.click(screen.getByRole("button", { name: /login/i }));
+  await waitFor(() => expect(screen.getByText(/email and password required/i)).toBeInTheDocument());
+});
 
-  const email = screen.getByLabelText(/Email/i)
-  const pass = screen.getByLabelText(/Password/i)
-  fireEvent.change(email, { target: { value: 'fus@gmail.com' } })
-  fireEvent.change(pass, { target: { value: 'password' } })
-  fireEvent.click(screen.getByRole('button', { name: /login/i }))
-  await waitFor(() => expect(window.location.pathname).toBe('/upload'))
-})
+test("successful login calls authClient and navigates", async () => {
+  (authClient.login as jest.Mock).mockResolvedValue("token");
+  const loginMock = jest.fn();
+  render(
+    <AuthContext.Provider value={{ isAuthenticated: false, isLoading: false, login: loginMock, logout: jest.fn(), verify: jest.fn() }}>
+      <LoginPage />
+    </AuthContext.Provider>
+  );
+  fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "user@example.com" }});
+  fireEvent.change(screen.getByLabelText(/password/i), { target: { value: "password" }});
+  fireEvent.click(screen.getByRole("button", { name: /login/i }));
+  await waitFor(() => expect(authClient.login).toHaveBeenCalled());
+});
