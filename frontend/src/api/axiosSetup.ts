@@ -1,3 +1,4 @@
+import { InternalAxiosRequestConfig } from "axios";
 import { tokenStore } from "../tokenStore";
 import { callRefresh } from "./authClient";
 import api from "./axios";
@@ -37,7 +38,7 @@ function processQueue(err: any | null, token?: string | null) {
   queue = [];
 }
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   // ensure cookies are sent
   config.withCredentials = true;
 

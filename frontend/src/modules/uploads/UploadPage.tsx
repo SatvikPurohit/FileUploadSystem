@@ -19,8 +19,7 @@ import { useMutation } from "@tanstack/react-query";
 import { AxiosProgressEvent } from "axios";
 import axios from "../../api/axiosSetup";
 import type { UploadItem } from "../../types";
-
-
+import { useNavigate } from "react-router-dom";
 
 const UploadFileIcon = lazy(() => import("@mui/icons-material/UploadFile"));
 const CancelIcon = lazy(() => import("@mui/icons-material/Cancel"));
@@ -40,6 +39,7 @@ const MAX_BYTES = 10 * 1024 * 1024;
 const CONCURRENCY = 3;
 
 export default function UploadPage() {
+  const navigate = useNavigate();
   const [queue, setQueue] = useState<UploadItem[]>([]);
   const [snack, setSnack] = useState<{
     open: boolean;
@@ -62,6 +62,42 @@ export default function UploadPage() {
   // tasks queue (ids)
   const tasksRef = useRef<string[]>([]);
   const workerRunningRef = useRef(false);
+
+  useEffect(() => {
+    // Add multiple dummy states to make it harder to navigate back
+    const statesToAdd = 3;
+    for (let i = 0; i < statesToAdd; i++) {
+      window.history.pushState(null, "", window.location.href);
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      // Immediately push multiple states to block navigation
+      window.history.pushState(null, "", window.location.href);
+      window.history.pushState(null, "", window.location.href);
+
+      // Show a message that they need to logout
+      setSnack({
+        open: true,
+        msg: "Please use the logout button to exit",
+        severity: "info",
+      });
+    };
+
+    // Use both popstate and beforeunload for extra protection
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // This won't stop back button, but will warn on page close/refresh
+      e.preventDefault();
+      e.returnValue = "";
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
 
   // helper to update queue atomically and avoid creating new array if identical
   const updateQueue = useCallback(
