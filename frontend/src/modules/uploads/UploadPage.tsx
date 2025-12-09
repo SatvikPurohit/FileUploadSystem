@@ -17,7 +17,7 @@ import {
 import { useDropzone } from "react-dropzone";
 import { useMutation } from "@tanstack/react-query";
 import { AxiosProgressEvent } from "axios";
-import axios from "../../api/axios";
+import axios from "../../api/axiosSetup";
 import type { UploadItem } from "../../types";
 
 

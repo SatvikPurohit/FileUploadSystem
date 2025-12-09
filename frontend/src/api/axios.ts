@@ -1,4 +1,3 @@
-// src/api/axios.ts
 import axios from "axios";
 
 const DEFAULT_API = "http://localhost:4000/api";

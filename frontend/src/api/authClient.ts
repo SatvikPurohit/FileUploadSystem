@@ -1,5 +1,4 @@
-// src/authClient.ts
-import api from "./axios";
+import api from "./axiosSetup";
 import { tokenStore } from "../tokenStore";
 
 export async function login(email: string, password: string) {

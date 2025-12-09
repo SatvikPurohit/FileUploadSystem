@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect, ReactNode, useRef } from "react";
-import api from "./api/axios";
+import api from "./api/axiosSetup";
 import { login as loginClient, logout as logoutClient } from "./api/authClient";
 
 interface AuthContextType {
