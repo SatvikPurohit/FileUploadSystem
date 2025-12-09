@@ -872,6 +872,24 @@ await revokeRefresh(decoded.sub);
 JWT.verify(token, JWT_SECRET)  // Throws error if expired
 ```
 
+### 9. Prevent Browser Back Button on Protected Pages
+✅ **We do:** Force logout from upload page
+```typescript
+// In UploadPage component
+useEffect(() => {
+  window.history.pushState(null, "", window.location.href);
+  
+  const handlePopState = () => {
+    window.history.pushState(null, "", window.location.href);
+    // Show message: "Please use the logout button to exit"
+  };
+  
+  window.addEventListener("popstate", handlePopState);
+  return () => window.removeEventListener("popstate", handlePopState);
+}, []);
+```
+This prevents users from accidentally navigating back with browser controls, ensuring they explicitly logout to clear their session.
+
 ---
 
 ## Flow Diagrams

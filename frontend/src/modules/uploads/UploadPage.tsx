@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Paper,
@@ -36,12 +37,37 @@ const MAX_BYTES = 10 * 1024 * 1024;
 const CONCURRENCY = 3;
 
 export default function UploadPage() {
+  const navigate = useNavigate();
   const [queue, setQueue] = useState<UploadItem[]>([]);
   const [snack, setSnack] = useState<{
     open: boolean;
     msg: string;
     severity: "success" | "error" | "info";
   } | null>(null);
+
+  // Prevent browser back button - user must logout
+  useEffect(() => {
+    // Push a dummy state to history
+    window.history.pushState(null, "", window.location.href);
+    
+    const handlePopState = (event: PopStateEvent) => {
+      // Push state again to keep user on upload page
+      window.history.pushState(null, "", window.location.href);
+      
+      // Show a message that they need to logout
+      setSnack({
+        open: true,
+        msg: "Please use the logout button to exit",
+        severity: "info",
+      });
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
 
   // store file objects out-of-state
   const fileMap = useRef<Map<string, File>>(new Map());
