@@ -1,6 +1,7 @@
 import { tokenStore } from "../tokenStore";
 import { callRefresh } from "./authClient";
 import api from "./axios";
+import axios from "axios";
 
 
 type QueueItem = {
@@ -62,8 +63,22 @@ api.interceptors.response.use(
         return api(original);
       } catch (e) {
         processQueue(e, null);
-        // on refresh failure, clear memory token and redirect to login
+        // on refresh failure, clear memory token and call logout to clear cookies
         tokenStore.clear();
+        
+        // Call logout endpoint to clear HttpOnly cookies
+        // Use raw axios instance (not 'api') to avoid triggering interceptors again
+        try {
+          await axios.post(
+            (api.defaults.baseURL || "http://localhost:4000/api") + "/auth/logout",
+            {},
+            { withCredentials: true }
+          );
+        } catch (logoutErr) {
+          // Ignore logout errors - cookies might already be expired
+          console.warn("Logout call failed during refresh error:", logoutErr);
+        }
+        
         window.location.href = "/login";
         return Promise.reject(e);
       } finally {

@@ -137,7 +137,7 @@ const routes: ServerRoute[] = [
 
       // clear cookies (send expired)
       h.unstate("token", { path: "/" });
-      h.unstate("refresh_token", { path: "/auth/refresh" });
+      h.unstate("refresh_token", { path: "/" });
       h.unstate("csrf_token", { path: "/" });
 
       return h.response({ ok: true });
@@ -199,40 +199,35 @@ const routes: ServerRoute[] = [
       const { token: refreshToken } = await signRefreshToken({ sub: user.id });
       const csrf = crypto.randomBytes(24).toString("hex");
 
+      const isProduction = process.env.NODE_ENV === "production";
+
       // set access token
       h.state("token", accessToken, {
         isHttpOnly: true,
         path: "/",
-        isSameSite: "None",
-        isSecure: false, // allowed on localhost
+        isSameSite: isProduction ? "None" : "Lax",
+        isSecure: isProduction,
+        ttl: 15 * 60 * 1000,
       });
 
       // set refresh token
       h.state("refresh_token", refreshToken, {
         isHttpOnly: true,
         path: "/",
-        isSameSite: "None",
-        isSecure: false,
+        isSameSite: isProduction ? "None" : "Lax",
+        isSecure: isProduction,
+        ttl: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
 
-      // set csrf token
+      // set csrf token (NOT HttpOnly so JavaScript can read it)
       h.state("csrf_token", csrf, {
         isHttpOnly: false,
         path: "/",
-        isSameSite: "None",
-        isSecure: false,
+        isSameSite: isProduction ? "None" : "Lax",
+        isSecure: isProduction,
       });
 
-      const token = JWT.sign({ sub: user.id }, JWT_SECRET, {
-        expiresIn: "15m",
-      });
-      return h.response({ ok: true, accessToken }).state("token", token, {
-        isHttpOnly: true,
-        isSecure: process.env.NODE_ENV === "production",
-        isSameSite: "Lax",
-        path: "/",
-        ttl: 15 * 60 * 1000,
-      });
+      return h.response({ ok: true, accessToken });
     },
   },
 ];

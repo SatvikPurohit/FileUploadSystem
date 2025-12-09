@@ -751,24 +751,35 @@ export const verifyCsrf = async (request: Request, h: any) => {
 }
 ```
 
-### Frontend Implementation (Recommended)
+### Frontend Implementation
 
-The frontend should:
+The system includes a cookie utility for reading CSRF tokens:
 
-1. **Read CSRF token from cookie:**
+**`frontend/src/utils/cookies.ts`:**
 ```typescript
-function getCsrfToken() {
-  const cookies = document.cookie.split(';');
-  for (let cookie of cookies) {
-    const [name, value] = cookie.trim().split('=');
-    if (name === 'csrf_token') return value;
+export function readCookie(name: string): string | null {
+  const cookieString = document.cookie;
+  if (!cookieString) return null;
+  
+  const cookies = cookieString.split("; ");
+  for (const cookie of cookies) {
+    const [cookieName, cookieValue] = cookie.split("=");
+    if (cookieName === name) {
+      return decodeURIComponent(cookieValue);
+    }
   }
   return null;
 }
+
+export function getCsrfToken(): string | null {
+  return readCookie("csrf_token");
+}
 ```
 
-2. **Send token in header with state-changing requests:**
+**Usage - Send token in header with state-changing requests:**
 ```typescript
+import { getCsrfToken } from './utils/cookies';
+
 axios.post('/api/auth/logout', {}, {
   headers: {
     'X-CSRF-Token': getCsrfToken()
@@ -776,6 +787,12 @@ axios.post('/api/auth/logout', {}, {
   withCredentials: true
 });
 ```
+
+**Important:** Cookies require proper `SameSite` settings:
+- Development (HTTP): `SameSite=Lax` works without `Secure` flag
+- Production (HTTPS): `SameSite=None` requires `Secure=true`
+
+The backend automatically uses `Lax` for development and `None` for production.
 
 ### Why This Works
 
@@ -1228,34 +1245,25 @@ This File Upload System implements a **defense-in-depth security strategy**:
 
 ## Known Issues
 
-The following issues were identified in the current implementation and should be addressed:
+The following issues were identified and **have been fixed**:
 
-### 1. Duplicate Access Token Setting (Login Handler)
+### 1. ✅ FIXED: Cookie SameSite Settings
 
-**Location**: `backend/routes/auth.ts`, lines 198-235
+**Issue**: Cookies were set with `isSameSite: "None"` and `isSecure: false`, which is invalid in modern browsers. This caused cookies (especially CSRF tokens) to be rejected and `document.cookie` to return empty.
 
-**Issue**: The login handler creates and sets the access token cookie twice with different settings:
-- First at lines 203-208 with `isSameSite: "None"`
-- Second at lines 229-235 with `isSameSite: "Lax"` and `ttl`
+**Fix Applied**: Updated login handler to use environment-based settings:
+- Development: `isSameSite: "Lax"` (works with HTTP)
+- Production: `isSameSite: "None"` with `isSecure: true` (requires HTTPS)
 
-**Impact**: The second call overwrites the first, causing the first token generation to be wasted and creating potential confusion about which settings are actually used.
+**Code**: `backend/routes/auth.ts`, lines 202-228
 
-**Recommendation**: Remove the duplicate code and consolidate into a single token creation and cookie setting:
-```typescript
-// Remove lines 198-208, keep only lines 226-235
-const token = JWT.sign({ sub: user.id }, JWT_SECRET, {
-  expiresIn: "15m",
-});
-return h.response({ ok: true, accessToken: token }).state("token", token, {
-  isHttpOnly: true,
-  isSecure: process.env.NODE_ENV === "production",
-  isSameSite: "Lax",
-  path: "/",
-  ttl: 15 * 60 * 1000,
-});
-```
+### 2. ✅ FIXED: Duplicate Access Token Setting
 
-### 2. Cookie Path Mismatch (Logout Handler)
+**Issue**: The login handler was setting the access token cookie twice with conflicting settings.
+
+**Fix Applied**: Consolidated into a single cookie setting with proper environment-based configuration. Removed duplicate code.
+
+### 3. Remaining: Cookie Path Mismatch (Logout Handler)
 
 **Location**: `backend/routes/auth.ts`, line 140
 
@@ -1272,24 +1280,15 @@ h.unstate("refresh_token", { path: "/auth/refresh" });
 h.unstate("refresh_token", { path: "/" });
 ```
 
-### 3. Production Security Settings
+### 4. ✅ FIXED: Production Security Settings
 
-**Location**: Multiple files
+**Issue**: Security settings were hardcoded for development.
 
-**Issue**: Several security settings are disabled for development convenience:
-- `isSecure: false` allows cookies over HTTP
-- `isSameSite: "None"` allows cross-site cookie sending
+**Fix Applied**: All cookie settings now automatically adapt based on `NODE_ENV`:
+- Development: `isSecure: false`, `isSameSite: "Lax"`
+- Production: `isSecure: true`, `isSameSite: "None"`
 
-**Impact**: If these settings are not updated in production, cookies could be vulnerable to man-in-the-middle attacks and CSRF attacks.
-
-**Recommendation**: Ensure production configuration uses:
-```typescript
-{
-  isSecure: true,           // HTTPS only
-  isSameSite: "Strict",     // Maximum CSRF protection
-  // or "Lax" if cross-site navigation is needed
-}
-```
+This ensures cookies work correctly in both environments without manual configuration changes.
 
 ---
 
