@@ -1,4 +1,3 @@
-// src/__tests__/UploadPage.test.tsx
 import React from "react";
 import { screen, fireEvent, waitFor, act, within } from "@testing-library/react";
 import {
@@ -7,9 +6,9 @@ import {
   renderWithProvidersAsync,
 } from "../tests/test-utils";
 import UploadPage from "../modules/uploads/UploadPage";
-import api from "../api/axios";
+import api from "../api/axiosSetup";
 
-jest.mock("../api/axios");
+jest.mock("../api/axiosSetup");
 
 function makeFile(name: string, size = 1024, type = "text/plain") {
   return new File([new ArrayBuffer(size)], name, { type });
