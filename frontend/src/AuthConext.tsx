@@ -1,4 +1,3 @@
-// src/AuthConext.tsx
 import { createContext, useState, useEffect, ReactNode, useRef } from "react";
 import api from "./api/axios";
 import { login as loginClient, logout as logoutClient } from "./api/authClient";

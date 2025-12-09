@@ -1,7 +1,17 @@
-export default {
+// jest.config.ts
+import type { Config } from "jest";
+
+const config: Config = {
   preset: "ts-jest",
   testEnvironment: "jsdom",
-  moduleNameMapper: { "\\.(css|scss)$": "identity-obj-proxy" },
+
+  // run this after env so jest-dom matchers are available
+  setupFilesAfterEnv: ["<rootDir>/setupTests.ts"],
+
+  moduleNameMapper: {
+    "\\.(css|scss|sass)$": "identity-obj-proxy",
+  },
+
   collectCoverage: true,
   collectCoverageFrom: ["src/**/*.{ts,tsx}", "!src/**/*.d.ts"],
   coverageThreshold: {
@@ -13,3 +23,5 @@ export default {
     },
   },
 };
+
+export default config;
