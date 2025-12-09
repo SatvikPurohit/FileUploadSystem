@@ -1,6 +1,6 @@
 # File Upload System
 
-**[Backend Docs](backend/README.md)** | **[Frontend Docs](frontend/README.md)**
+**[Backend Docs](backend/README.md)** | **[Frontend Docs](frontend/README.md)** | **[Security Architecture](ARCHITECTURE.md)**
 
 ## Architecture
 
@@ -82,6 +82,19 @@ Backend should be running on port 4000 for frontend.
 - download files by docId
 - auto-logout on 401
 - all files stored locally in `public/uploads/<userId>/`
+
+## Security Features
+
+For a comprehensive understanding of the security architecture, see **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+
+Key security features:
+- **Dual-token system**: Short-lived access tokens (15 min) + long-lived refresh tokens (7 days)
+- **Password security**: bcrypt hashing with 10 salt rounds
+- **Token storage**: Refresh token hashes stored in database (SHA-256)
+- **HttpOnly cookies**: Prevents XSS attacks from stealing tokens
+- **CSRF protection**: Token-based verification for state-changing operations
+- **Token revocation**: Logout invalidates all user sessions
+- **Token rotation**: Refresh tokens replaced on login
 
 ## troubleshooting
 
