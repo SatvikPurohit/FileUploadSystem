@@ -1,7 +1,11 @@
 // src/__tests__/UploadPage.test.tsx
 import React from "react";
-import { screen, fireEvent, waitFor } from "@testing-library/react";
-import { renderWithProviders } from "../tests/test-utils";
+import { screen, fireEvent, waitFor, act, within } from "@testing-library/react";
+import {
+  getFileInput,
+  renderWithProviders,
+  renderWithProvidersAsync,
+} from "../tests/test-utils";
 import UploadPage from "../modules/uploads/UploadPage";
 import api from "../api/axios";
 
@@ -27,31 +31,43 @@ async function attachFileToInput(file: File) {
 }
 
 test("adds files and rejects wrong type", async () => {
-  renderWithProviders(<UploadPage />);
+  const utils = await renderWithProvidersAsync(<UploadPage />);
 
-  const badFile = makeFile("bad.exe", 1000, "application/octet-stream");
+  // find file input robustly
+  const input = getFileInput(utils.container);
 
-  // Try the reliable input change first
-  try {
-    await attachFileToInput(badFile);
-  } catch (e) {
-    // fallback: fire a properly shaped drop event if input wasn't found
-    const labelNode = screen.queryByText(/Drag & drop files here/i);
-    const dropTarget =
-      labelNode?.closest("div") || document.querySelector('input[type="file"]');
-    if (!dropTarget)
-      throw new Error("Could not find drop target element in DOM");
-    fireEvent.drop(dropTarget as Element, {
-      dataTransfer: {
-        files: [badFile],
-        items: [{ kind: "file", type: badFile.type, getAsFile: () => badFile }],
-        types: ["Files"], // <-- important for react-dropzone
-      },
-    });
-  }
+  const goodFile = new File(["dummy content"], "test.pdf", {
+    type: "application/pdf",
+  });
+  const badFile = new File(["bad"], "bad.exe", {
+    type: "application/x-msdownload",
+  });
 
-  // The UI adds a FAILED item with "Invalid file type"
-  expect(await screen.findByText(/Invalid file type/i)).toBeInTheDocument();
+  // add good file (wrap in act)
+  await act(async () => {
+    fireEvent.change(input, { target: { files: [goodFile] } });
+    // allow uploaded item to be processed (microtask)
+    await new Promise((r) => setTimeout(r, 0));
+  });
+
+  const listItems = await screen.findAllByRole("listitem");
+  expect(listItems.length).toBeGreaterThan(0);
+
+  // find a list item that contains the filename
+  const itemWithFile = listItems.find((li) =>
+    within(li).queryByText(/test.pdf/i)
+  );
+  expect(itemWithFile).toBeDefined();
+
+  // add bad file
+  await act(async () => {
+    fireEvent.change(input, { target: { files: [badFile] } });
+    await new Promise((r) => setTimeout(r, 0));
+  });
+
+  await waitFor(() =>
+    expect(screen.getByText(/invalid file type/i)).toBeInTheDocument()
+  );
 });
 
 test("uploads files with progress and completes", async () => {

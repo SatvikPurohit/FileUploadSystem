@@ -11,7 +11,8 @@
     "build:frontend": "cd frontend && npm install --legacy-peer-deps && npm run build",
     "build": "npm run build:backend && npm run build:frontend",
     "prisma:studio": "cd backend && npx prisma studio --schema=./prisma/schema.prisma",
-    "seed": "cd backend && npm run seed"
+    "seed": "cd backend && npm run seed",
+    "analyze": "cd frontend && ANALYZE=true npm run build"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

@@ -1,3 +1,4 @@
+import { lazy } from "react";
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
   Box,
@@ -13,15 +14,18 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
-import CancelIcon from "@mui/icons-material/Cancel";
-import RefreshIcon from "@mui/icons-material/Refresh";
-import DeleteIcon from "@mui/icons-material/Delete";
 import { useDropzone } from "react-dropzone";
 import { useMutation } from "@tanstack/react-query";
 import { AxiosProgressEvent } from "axios";
 import axios from "../../api/axios";
 import type { UploadItem } from "../../types";
+
+
+
+const UploadFileIcon = lazy(() => import("@mui/icons-material/UploadFile"));
+const CancelIcon = lazy(() => import("@mui/icons-material/Cancel"));
+const RefreshIcon = lazy(() => import("@mui/icons-material/Refresh"));
+const DeleteIcon = lazy(() => import("@mui/icons-material/Delete"));
 
 type MutVars = { item: UploadItem; signal?: AbortSignal };
 type UploadResult = unknown;

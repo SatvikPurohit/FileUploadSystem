@@ -219,8 +219,8 @@ const routes: ServerRoute[] = [
       h.state("csrf_token", csrf, {
         isHttpOnly: false,
         path: "/",
-        isSameSite: "None",
-        isSecure: false,
+        isSameSite: "None", // lochalhost
+        isSecure: false, // localhost
       });
 
       const token = JWT.sign({ sub: user.id }, JWT_SECRET, {

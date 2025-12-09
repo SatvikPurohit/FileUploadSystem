@@ -2,11 +2,25 @@ import { tokenStore } from "../tokenStore";
 import { callRefresh } from "./authClient";
 import api from "./axios";
 
-
 type QueueItem = {
   resolve: (token?: string | null) => void;
   reject: (err?: any) => void;
 };
+
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const cookies = document.cookie ? document.cookie.split("; ") : [];
+  
+  for (const c of cookies) {
+    // split only on the first "=" so values containing "=" are preserved
+    const idx = c.indexOf("=");
+    if (idx === -1) continue;
+    const key = c.substring(0, idx);
+    const val = c.substring(idx + 1);
+    if (key === name) return decodeURIComponent(val);
+  }
+  return null;
+}
 
 let isRefreshing = false;
 let queue: QueueItem[] = [];
@@ -19,14 +33,35 @@ function processQueue(err: any | null, token?: string | null) {
   queue = [];
 }
 
-// attach header from in-memory store
 api.interceptors.request.use((config) => {
+  // ensure cookies are sent
   config.withCredentials = true;
+
+  // Authorization from in-memory store (optional)
   const token = tokenStore.get();
-  if (token && config.headers) config.headers["Authorization"] = `Bearer ${token}`;
+  if (token && config.headers)
+    config.headers["Authorization"] = `Bearer ${token}`;
+
+  // Add CSRF header for state-changing requests
+  const method = (config.method || "get").toUpperCase();
+  const isStateChanging = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+
+  if (isStateChanging && config.headers) {
+    const csrf = readCookie("csrf_token");
+
+    if (csrf) {
+      config.headers["x-csrf-token"] = csrf;
+    } else {
+      // optional: helpful dev warning without being noisy in prod
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.warn("No CSRF cookie found; server may reject this request");
+      }
+    }
+  }
+
   return config;
 });
-
 
 api.interceptors.response.use(
   (r) => r,
@@ -39,7 +74,8 @@ api.interceptors.response.use(
         return new Promise((resolve, reject) =>
           queue.push({
             resolve: (token?: string | null) => {
-              if (original.headers) original.headers["Authorization"] = "Bearer " + token;
+              if (original.headers)
+                original.headers["Authorization"] = "Bearer " + token;
               resolve(api(original));
             },
             reject,
@@ -52,7 +88,8 @@ api.interceptors.response.use(
       try {
         const newAccess = await callRefresh(); // server reads refresh cookie and returns new access
         processQueue(null, newAccess);
-        if (original.headers) original.headers["Authorization"] = "Bearer " + newAccess;
+        if (original.headers)
+          original.headers["Authorization"] = "Bearer " + newAccess;
         return api(original);
       } catch (e) {
         processQueue(e, null);
