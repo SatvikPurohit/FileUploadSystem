@@ -2,6 +2,56 @@
 
 **[Backend Docs](backend/README.md)** | **[Frontend Docs](frontend/README.md)**
 
+---
+
+## 📚 Interview Preparation & Learning Resources
+
+Comprehensive documentation for learning about this project from basics to professional level:
+
+- **[📖 INTERVIEW GUIDE](INTERVIEW_GUIDE.md)** - Complete learning path from basics to pro (start here!)
+  - Learning roadmap (8 weeks: beginner → expert)
+  - Simple analogies for complex concepts
+  - Code walkthroughs with explanations
+  - Common interview questions with answers
+  - What interviewers might ask you to change
+
+- **[🏗️ ARCHITECTURE](ARCHITECTURE.md)** - In-depth technical documentation
+  - System architecture diagrams
+  - Technology stack deep dive
+  - Data flow explanations
+  - Database schema details
+  - API endpoints reference
+  - Security measures
+  - Performance optimizations
+
+- **[❓ COMMON INTERVIEW QUESTIONS](COMMON_INTERVIEW_QUESTIONS.md)** - Q&A format
+  - 20+ common questions with detailed answers
+  - Organized by difficulty (basic, intermediate, advanced)
+  - Scenario-based questions
+  - Code examples and explanations
+  - Trade-offs and alternatives
+
+- **[🚀 IMPROVEMENTS & ENHANCEMENTS](IMPROVEMENTS_AND_ENHANCEMENTS.md)** - Scalability discussions
+  - Cloud storage migration (AWS S3)
+  - PostgreSQL migration
+  - Caching strategies (Redis)
+  - Load balancing
+  - Security enhancements (virus scanning, rate limiting)
+  - Performance optimizations (compression, CDN)
+  - Complete implementation examples
+
+- **[⚡ QUICK REFERENCE](QUICK_REFERENCE.md)** - Cheat sheet for interview day
+  - 30-second project pitch
+  - Key numbers to remember
+  - Must-know flows
+  - Common questions quick answers
+  - Code snippets
+  - Interview tips
+
+> 💡 **Tip**: Start with the [INTERVIEW GUIDE](INTERVIEW_GUIDE.md) for a structured learning path, then dive into [ARCHITECTURE](ARCHITECTURE.md) for technical details. Use [QUICK REFERENCE](QUICK_REFERENCE.md) for last-minute review before interviews.
+
+---
+
 ## Architecture
 
 - **Backend**: Node.js + Hapi + Prisma + SQLite (port 4000)
