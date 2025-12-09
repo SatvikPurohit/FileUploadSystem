@@ -2,6 +2,7 @@
 import { createContext, useState, useEffect, ReactNode, useRef } from "react";
 import api from "./api/axios";
 import { login as loginClient, logout as logoutClient } from "./api/authClient";
+import { tokenStore } from "./tokenStore";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -33,6 +34,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     async function run() {
       try {
         setIsLoading(true);
+
+        // Only verify if we have a token, otherwise skip
+        const token = tokenStore.get();
+        if (!token) {
+          if (!isMounted.current) return;
+          setIsAuthenticated(false);
+          setIsLoading(false);
+          return;
+        }
 
         await api.post("/auth/verify-status", { withCredentials: true });
 

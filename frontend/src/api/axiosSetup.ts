@@ -34,7 +34,13 @@ api.interceptors.response.use(
     const original = error.config;
     if (!original) return Promise.reject(error);
 
-    if (error.response?.status === 401 && !original._retry) {
+    // Don't retry auth endpoints to avoid infinite loops
+    const url = original.url || "";
+    const isAuthEndpoint = url.includes("/auth/refresh") || 
+                          url.includes("/auth/login") || 
+                          url.includes("/auth/verify-status");
+    
+    if (error.response?.status === 401 && !original._retry && !isAuthEndpoint) {
       if (isRefreshing) {
         return new Promise((resolve, reject) =>
           queue.push({
