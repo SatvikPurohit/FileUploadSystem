@@ -47,11 +47,15 @@ export default function UploadPage() {
 
   // Prevent browser back button - user must logout
   useEffect(() => {
-    // Push a dummy state to history
-    window.history.pushState(null, "", window.location.href);
+    // Add multiple dummy states to make it harder to navigate back
+    const statesToAdd = 3;
+    for (let i = 0; i < statesToAdd; i++) {
+      window.history.pushState(null, "", window.location.href);
+    }
     
     const handlePopState = (event: PopStateEvent) => {
-      // Push state again to keep user on upload page
+      // Immediately push multiple states to block navigation
+      window.history.pushState(null, "", window.location.href);
       window.history.pushState(null, "", window.location.href);
       
       // Show a message that they need to logout
@@ -62,10 +66,19 @@ export default function UploadPage() {
       });
     };
 
+    // Use both popstate and beforeunload for extra protection
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // This won't stop back button, but will warn on page close/refresh
+      e.preventDefault();
+      e.returnValue = '';
+    };
+
     window.addEventListener("popstate", handlePopState);
+    window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
       window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, []);
 

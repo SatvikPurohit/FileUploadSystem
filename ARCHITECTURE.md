@@ -877,18 +877,32 @@ JWT.verify(token, JWT_SECRET)  // Throws error if expired
 ```typescript
 // In UploadPage component
 useEffect(() => {
-  window.history.pushState(null, "", window.location.href);
+  // Push multiple dummy states to make navigation harder
+  for (let i = 0; i < 3; i++) {
+    window.history.pushState(null, "", window.location.href);
+  }
   
   const handlePopState = () => {
+    // Push multiple states immediately to block back navigation
+    window.history.pushState(null, "", window.location.href);
     window.history.pushState(null, "", window.location.href);
     // Show message: "Please use the logout button to exit"
   };
   
+  const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+    e.preventDefault();
+    e.returnValue = '';
+  };
+  
   window.addEventListener("popstate", handlePopState);
-  return () => window.removeEventListener("popstate", handlePopState);
+  window.addEventListener("beforeunload", handleBeforeUnload);
+  return () => {
+    window.removeEventListener("popstate", handlePopState);
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+  };
 }, []);
 ```
-This prevents users from accidentally navigating back with browser controls, ensuring they explicitly logout to clear their session.
+This creates multiple history entries and immediately pushes more when back is pressed, making it significantly harder to navigate away. The `beforeunload` handler warns users before closing/refreshing the page. Users must use the logout button to properly exit.
 
 ---
 
