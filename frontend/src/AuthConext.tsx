@@ -36,27 +36,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsAuthenticated(false);
   };
 
-  // Protect against back-button landing on stale login page:
-  useEffect(() => {
-    // Replace then push so the current entry isn't a stale login
-    if (typeof window !== "undefined") {
-      window.history.replaceState(null, "", window.location.pathname);
-      window.history.pushState(null, "", window.location.pathname);
-    }
-
-    const onPop = () => {
-      // Keep the user on the same route on back
-      if (typeof window !== "undefined") {
-        window.history.pushState(null, "", window.location.pathname);
-      }
-    };
-    window.addEventListener("popstate", onPop);
-
-    return () => {
-      window.removeEventListener("popstate", onPop);
-    };
-  }, []);
-
   useEffect(() => {
     async function run() {
       try {
