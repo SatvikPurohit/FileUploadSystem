@@ -2,7 +2,7 @@
 
 > 🚀 **Last-Minute Review Before Interview**
 > 
-> Print this page and review it 30 minutes before your interview!
+> Keep this page handy and review it 30 minutes before your interview!
 
 ## 30-Second Project Pitch
 

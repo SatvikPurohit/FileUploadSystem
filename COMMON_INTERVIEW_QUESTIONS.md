@@ -1910,4 +1910,17 @@ These questions cover:
 - Discuss improvements
 - Answer "why" for every decision
 
+---
+
+## Additional Resources
+
+For more in-depth coverage, check out these related documents:
+
+- **[INTERVIEW_GUIDE.md](INTERVIEW_GUIDE.md)** - Complete learning path from basics to expert
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Detailed technical architecture documentation
+- **[IMPROVEMENTS_AND_ENHANCEMENTS.md](IMPROVEMENTS_AND_ENHANCEMENTS.md)** - Production-ready improvements guide
+- **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - Last-minute interview preparation cheat sheet
+
+---
+
 Good luck! 🚀
