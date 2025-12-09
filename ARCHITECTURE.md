@@ -166,6 +166,8 @@ handler: async (request: Request, h: ResponseToolkit) => {
 - `ttl: 15 * 60 * 1000` - Time-to-live: 15 minutes in milliseconds
 - Purpose: Return confirmation and token to the client
 
+> **⚠️ Code Issue**: This code sets the access token cookie twice (lines 203-208 and 229-235) with different settings. The second call overwrites the first. The second one uses `isSameSite: "Lax"` and includes `ttl`, while the first uses `isSameSite: "None"`. This should be consolidated into a single cookie setting.
+
 ---
 
 ## Access Token (JWT)
@@ -614,17 +616,20 @@ export const revokeRefresh = async (userId: string = "") => {
 }
 ```
 
+> **⚠️ Code Issue**: The logout handler clears the refresh_token cookie with path `/auth/refresh` (line 611 in the code shown), but the token was set with path `/` (line 213 in login handler). Cookie paths must match for proper clearing. This should be `{ path: "/" }` to correctly clear the refresh token cookie.
+
 **Line-by-line:**
-- **Lines 116-118**: Define POST endpoint for logout
-- **Line 128**: Extract refresh token from cookie
-- **Line 129**: Check if refresh token exists
-- **Line 131**: Decode the token to get user ID
-- **Line 132**: Call revoke function to clear hash from database
+- **Lines 595-597**: Define POST endpoint for logout
+- **Line 599**: Extract refresh token from cookie
+- **Line 600**: Check if refresh token exists
+- **Line 602**: Decode the token to get user ID
+- **Line 603**: Call revoke function to clear hash from database
   - This is the key line that invalidates the token!
-- **Lines 133-135**: Handle any errors gracefully
-- **Lines 139-141**: Clear all cookies by sending expired versions
+- **Lines 604-606**: Handle any errors gracefully
+- **Lines 610-612**: Clear all cookies by sending expired versions
   - `h.unstate()` tells browser to delete the cookies
-- **Line 143**: Return success response
+  - ⚠️ **Path mismatch**: refresh_token uses `/auth/refresh` instead of `/`
+- **Line 614**: Return success response
 
 ### What Happens After Revocation?
 
@@ -1219,4 +1224,75 @@ This File Upload System implements a **defense-in-depth security strategy**:
 - ⚠️  Requires: HTTPS in production, proper secret management
 - 📝 Can improve: Full token rotation, rate limiting, MFA
 
-This architecture follows **OWASP best practices** for web application security while balancing usability and implementation complexity.
+---
+
+## Known Issues
+
+The following issues were identified in the current implementation and should be addressed:
+
+### 1. Duplicate Access Token Setting (Login Handler)
+
+**Location**: `backend/routes/auth.ts`, lines 198-235
+
+**Issue**: The login handler creates and sets the access token cookie twice with different settings:
+- First at lines 203-208 with `isSameSite: "None"`
+- Second at lines 229-235 with `isSameSite: "Lax"` and `ttl`
+
+**Impact**: The second call overwrites the first, causing the first token generation to be wasted and creating potential confusion about which settings are actually used.
+
+**Recommendation**: Remove the duplicate code and consolidate into a single token creation and cookie setting:
+```typescript
+// Remove lines 198-208, keep only lines 226-235
+const token = JWT.sign({ sub: user.id }, JWT_SECRET, {
+  expiresIn: "15m",
+});
+return h.response({ ok: true, accessToken: token }).state("token", token, {
+  isHttpOnly: true,
+  isSecure: process.env.NODE_ENV === "production",
+  isSameSite: "Lax",
+  path: "/",
+  ttl: 15 * 60 * 1000,
+});
+```
+
+### 2. Cookie Path Mismatch (Logout Handler)
+
+**Location**: `backend/routes/auth.ts`, line 140
+
+**Issue**: The logout handler attempts to clear the `refresh_token` cookie with path `/auth/refresh`, but the cookie was set with path `/` during login (line 213).
+
+**Impact**: The refresh token cookie may not be properly cleared on logout because browsers require exact path matches for cookie deletion. This could leave the refresh token cookie in the browser even after logout.
+
+**Recommendation**: Change the path to match the login setting:
+```typescript
+// Change from:
+h.unstate("refresh_token", { path: "/auth/refresh" });
+
+// To:
+h.unstate("refresh_token", { path: "/" });
+```
+
+### 3. Production Security Settings
+
+**Location**: Multiple files
+
+**Issue**: Several security settings are disabled for development convenience:
+- `isSecure: false` allows cookies over HTTP
+- `isSameSite: "None"` allows cross-site cookie sending
+
+**Impact**: If these settings are not updated in production, cookies could be vulnerable to man-in-the-middle attacks and CSRF attacks.
+
+**Recommendation**: Ensure production configuration uses:
+```typescript
+{
+  isSecure: true,           // HTTPS only
+  isSameSite: "Strict",     // Maximum CSRF protection
+  // or "Lax" if cross-site navigation is needed
+}
+```
+
+---
+
+## Conclusion
+
+This architecture follows **OWASP best practices** for web application security while balancing usability and implementation complexity. The documented issues above should be addressed to ensure maximum security and correct functionality.
