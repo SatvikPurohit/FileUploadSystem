@@ -19,7 +19,6 @@ import { useMutation } from "@tanstack/react-query";
 import { AxiosProgressEvent } from "axios";
 import axios from "../../api/axiosSetup";
 import type { UploadItem } from "../../types";
-import { useNavigate } from "react-router-dom";
 
 const UploadFileIcon = lazy(() => import("@mui/icons-material/UploadFile"));
 const CancelIcon = lazy(() => import("@mui/icons-material/Cancel"));
@@ -39,7 +38,6 @@ const MAX_BYTES = 10 * 1024 * 1024;
 const CONCURRENCY = 3;
 
 export default function UploadPage() {
-  const navigate = useNavigate();
   const [queue, setQueue] = useState<UploadItem[]>([]);
   const [snack, setSnack] = useState<{
     open: boolean;
