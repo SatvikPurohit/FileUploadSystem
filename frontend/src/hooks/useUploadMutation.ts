@@ -33,7 +33,7 @@ export const useUploadMutation = ({
 
     const res = await axios.post("/upload", form, {
       withCredentials: true,
-      signal,
+      signal, // for cancellation
       onUploadProgress: (progressEvent: AxiosProgressEvent) => {
         const loaded = progressEvent.loaded ?? 0;
         const total = progressEvent.total ?? file.size;

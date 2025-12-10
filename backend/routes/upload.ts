@@ -42,6 +42,7 @@ const route: ServerRoute = {
       return h.response({ ok: false, error: "Invalid request" }).code(400);
     }
 
+    // ------------------ prepare upload dir, local disk -----------------
     const uploadsDir = path.resolve(
       UPLOADS_DIR || path.join(process.cwd(), "uploads")
     );
@@ -61,6 +62,7 @@ const route: ServerRoute = {
         .code(415);
     }
 
+    // ------------------ busboy initialization -----------------
     let busboy: any;
     try {
       if (typeof BusboyImport === "function") {
@@ -85,6 +87,7 @@ const route: ServerRoute = {
         .code(500);
     }
 
+    //  ----------------- file saving and parsing logic -----------------
     const filesSaved: SavedFile[] = [];
     const fields: Record<string, string> = {};
     let aborted = false;
@@ -187,7 +190,7 @@ const route: ServerRoute = {
           }
         });
 
-        fileStream.pipe(writeStream);
+        fileStream.pipe(writeStream); // write to disk from read stream also can use .pipeline() 
       }
     );
 
@@ -208,6 +211,9 @@ const route: ServerRoute = {
       console.warn("request aborted by client");
     });
 
+    // Keep the request “open”
+// Stream file data for minutes if needed
+//  Wait for Busboy to finish parsing multipart
     return new Promise((resolve) => {
       busboy.on("finish", () => {
         if (aborted)
