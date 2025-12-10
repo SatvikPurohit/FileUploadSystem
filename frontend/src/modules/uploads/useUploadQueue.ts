@@ -35,9 +35,9 @@ export const useUploadQueue = (
   }, [queue]); // exact copy of queue for startWorker and mutation handler hook
   const fileMap = useRef<Map<string, File>>(new Map()); // map of queue item id to File(from queue) objects for ?
 
-  const activeIdsRef = useRef<Set<string>>(new Set()); // {}   // A removed or  {A} UPLOADING
-  const activeCountRef = useRef(0); // UPLOADING status objects count
-  const tasksRef = useRef<string[]>([]); // []. No uploads to start. ['B','C']
+  const activeIdsRef = useRef<Set<string>>(new Set()); // {}   // A removed or  {A} UPLOADING -> no uploading same fie twice
+  const activeCountRef = useRef(0); // UPLOADING status objects count, concurency limit
+  const tasksRef = useRef<string[]>([]); // []. No uploads to start. ['B','C'] only PENDING ids
   const workerRunningRef = useRef(false); // to keep track of one task or bundle of files getting uploaded in loop
 
   const updateQueue = useCallback(

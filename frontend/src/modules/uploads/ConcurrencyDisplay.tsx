@@ -12,8 +12,8 @@ export const ConcurrencyDisplay = ({ queue }: ConcurrencyDisplayProps) => {
   const pendingItems = queue.filter((it) => it.status === "PENDING"); // Remove failed
 
 // filter failed items
-// Display pending items before upload api
-// uploading items up to concurrency limit
+// Display pending items before upload
+// upl
   return (
     <Box sx={{ mt: 2, mb: 2 }}>
       <Typography variant="subtitle2">
