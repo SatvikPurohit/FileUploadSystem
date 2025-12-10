@@ -46,15 +46,19 @@ export const useUploadQueue = (
 
       setQueue((prev) => {
         const next = updater(prev);
-        if (prev.length === next.length && next.every((n, i) => n === prev[i]))
+        if (
+          prev.length === next.length &&
+          next.every((n, i) => n === prev[i])
+        ) {
           return prev;
+        }
         return next;
       });
     },
     []
   );
 
-  // Callbacks for mutation
+  // ---------- 1) handleProgress ----------
   const handleProgress = useCallback(
     (id: string, progress: number) => {
       updateQueue((prev) =>
@@ -64,9 +68,11 @@ export const useUploadQueue = (
     [updateQueue]
   );
 
+  // ---------- 2) handleSuccess ----------
   const handleSuccess = useCallback(
     (itemId: string) => {
       const item = queueRef.current.find((it) => it.id === itemId);
+
       updateQueue((prev) =>
         prev.map((it) =>
           it.id === itemId
@@ -74,8 +80,10 @@ export const useUploadQueue = (
             : it
         )
       );
+
       activeCountRef.current = Math.max(0, activeCountRef.current - 1);
       activeIdsRef.current.delete(itemId);
+
       startWorker();
 
       if (item) {
@@ -85,20 +93,29 @@ export const useUploadQueue = (
     [updateQueue, onSnackbar]
   );
 
+  // ---------- 3) handleError ----------
   const handleError = useCallback(
     (itemId: string, error: string) => {
       const item = queueRef.current.find((it) => it.id === itemId);
+
       updateQueue((prev) =>
-        prev.map((it) =>
-          it.id === itemId
-            ? { ...it, status: "FAILED", error, controller: undefined }
-            : it
-        )
+        prev.map((it) => {
+          if (it.id !== itemId) return it;
+
+          if (it.status === "CANCELLED") {
+            return { ...it, controller: undefined };
+          }
+
+          return { ...it, status: "FAILED", error, controller: undefined };
+        })
       );
+
       activeCountRef.current = Math.max(0, activeCountRef.current - 1);
       activeIdsRef.current.delete(itemId);
+      fileMap.current.delete(itemId);
 
       startWorker();
+
       if (item) {
         onSnackbar(`Failed ${item.fileName}`, "error");
       }
@@ -106,7 +123,7 @@ export const useUploadQueue = (
     [updateQueue, onSnackbar]
   );
 
-  // mutation with success/error handlers
+  // ---------- 4) mutation (AFTER success/error are defined) ----------
   const mutation = useUploadMutation({
     onProgress: handleProgress,
     onSuccess: handleSuccess,
@@ -114,7 +131,7 @@ export const useUploadQueue = (
     fileMap,
   });
 
-  // enqueue pending ids (syncs tasksRef to any new PENDINGs)
+  // ---------- 5) enqueuePendingIds ----------
   const enqueuePendingIds = useCallback(() => {
     const cur = queueRef.current;
     const pending = cur.filter((p) => p.status === "PENDING").map((p) => p.id);
@@ -128,36 +145,27 @@ export const useUploadQueue = (
     });
   }, []);
 
-  // worker: single place that starts uploads and respects concurrency (uses tasksRef)
+  // ---------- 6) startWorker (AFTER mutation exists) ----------
   const startWorker = useCallback(() => {
     if (workerRunningRef.current) return;
     workerRunningRef.current = true;
 
     (async function workerLoop() {
       try {
+        // till tasksRef becomes empty
         while (true) {
-          // if no tasks, break
           if (!tasksRef.current.length) break;
-
-          // HARD concurrency limit: stop if >= CONCURRENCY
           if (activeCountRef.current >= CONCURRENCY) break;
 
           const id = tasksRef.current.shift()!;
           const it = queueRef.current.find((x) => x.id === id);
-          if (!it || it.status !== "PENDING") {
-            continue;
-          }
+          if (!it || it.status !== "PENDING") continue;
+          if (activeIdsRef.current.has(id)) continue;
 
-          // final guard: skip if already active
-          if (activeIdsRef.current.has(id)) {
-            continue;
-          }
-
-          // reserve id immediately
           activeIdsRef.current.add(id);
 
-          // attach controller & flip state
           const controller = new AbortController();
+
           updateQueue((prev) =>
             prev.map((x) =>
               x.id === id && x.status === "PENDING"
@@ -168,13 +176,11 @@ export const useUploadQueue = (
 
           activeCountRef.current += 1;
 
-          // start upload (mutation handles completion)
           mutation.mutate({
             item: { ...it, controller },
             signal: controller.signal,
           });
 
-          // micro-yield so other tasks can be queued
           await new Promise((r) => setTimeout(r, 0));
         }
       } finally {
@@ -183,23 +189,22 @@ export const useUploadQueue = (
     })();
   }, [mutation, updateQueue]);
 
-  // keep worker in sync whenever queue changes
+  // ---------- 7) sync worker on queue updates ----------
   useEffect(() => {
     enqueuePendingIds();
     startWorker();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queue]);
 
-  // Add files handler
+  // ---------- 8) handleFiles ----------
   const handleFiles = useCallback(
     (files: File[]) => {
       const items: UploadItem[] = files.map((f) => {
         const id =
           (globalThis as any).crypto?.randomUUID?.() ??
           String(Date.now()) + Math.random().toString(36).slice(2, 8);
-        // maintai file map for faster lookup and light state
+
         fileMap.current.set(id, f);
-        // type out 3 allowed
+
         if (!ALLOWED.includes(f.type)) {
           return {
             id,
@@ -210,7 +215,7 @@ export const useUploadQueue = (
             error: "Invalid file type",
           } as UploadItem;
         }
-        // if size exceeds
+
         if (f.size > MAX_BYTES) {
           return {
             id,
@@ -231,50 +236,45 @@ export const useUploadQueue = (
         } as UploadItem;
       });
 
-      // Append all new items to the queue (worker will only start up to CONCURRENCY items)
       updateQueue((prev) => [...prev, ...items]);
 
-      // ensure worker picks them up
       enqueuePendingIds();
       startWorker();
     },
     [updateQueue, enqueuePendingIds, startWorker]
   );
 
-  // Cancel a specific item
+  // ---------- 9) cancelItem ----------
   const cancelItem = useCallback(
     (id: string) => {
-      const wasUploading = queueRef.current.some(
-        (it) => it.id === id && it.status === "UPLOADING"
-      );
+      const item = queueRef.current.find((it) => it.id === id);
+      if (!item) return;
 
-      if (wasUploading) {
-        activeCountRef.current = Math.max(0, activeCountRef.current - 1);
+      if (item.status === "UPLOADING") {
+        item.controller?.abort();
       }
 
+      activeIdsRef.current.delete(id);
+
       updateQueue((prev) =>
-        prev.map((it) => {
-          if (it.id === id) {
-            it.controller?.abort();
-            activeIdsRef.current.delete(id);
-            return {
-              ...it,
-              status: "CANCELLED",
-              error: "Cancelled by user",
-              controller: undefined,
-            };
-          }
-          return it;
-        })
+        prev.map((it) =>
+          it.id === id
+            ? {
+                ...it,
+                status: "CANCELLED",
+                error: "Cancelled by user",
+                controller: undefined,
+              }
+            : it
+        )
       );
 
-      // ensure worker can pick next
       startWorker();
     },
     [updateQueue, startWorker]
   );
 
-  // Retry (put back to PENDING)
+  // ---------- 10) retry ----------
   const retry = useCallback(
     (id: string) => {
       updateQueue((prev) =>
@@ -290,7 +290,7 @@ export const useUploadQueue = (
     [updateQueue, enqueuePendingIds, startWorker]
   );
 
-  // Remove item from list (and remove file)
+  // ---------- 11) removeItem ----------
   const removeItem = useCallback(
     (id: string) => {
       updateQueue((prev) => prev.filter((it) => it.id !== id));
@@ -301,36 +301,35 @@ export const useUploadQueue = (
     [updateQueue]
   );
 
-  // Cancel all
+  // ---------- 12) cancelAll ----------
   const cancelAll = useCallback(() => {
-    const uploadingCount = queueRef.current.filter(
-      (it) => it.status === "UPLOADING"
-    ).length;
-    activeCountRef.current = Math.max(
-      0,
-      activeCountRef.current - uploadingCount
-    );
+    queueRef.current.forEach((it) => {
+      if (it.status === "UPLOADING") {
+        it.controller?.abort();
+      }
+    });
 
-    updateQueue((prev) => {
-      prev.forEach((it) => it.controller?.abort());
-      return prev.map((it) =>
+    updateQueue((prev) =>
+      prev.map((it) =>
         it.status === "SUCCESS"
           ? it
           : { ...it, status: "CANCELLED", controller: undefined }
-      );
-    });
+      )
+    );
 
     tasksRef.current = [];
+    activeIdsRef.current.clear();
+
     onSnackbar("All uploads cancelled", "info");
     startWorker();
   }, [updateQueue, onSnackbar, startWorker]);
 
-  // Clear completed items
+  // ---------- 13) clearCompleted ----------
   const clearCompleted = useCallback(() => {
     updateQueue((q) => q.filter((it) => it.status !== "SUCCESS"));
   }, [updateQueue]);
 
-  // Derived UI counts
+  // ---------- 14) derived UI state ----------
   const pendingCount = queue.filter((it) => it.status === "PENDING").length;
   const uploadingCount = queue.filter((it) => it.status === "UPLOADING").length;
   const successCount = queue.filter((it) => it.status === "SUCCESS").length;
