@@ -132,6 +132,7 @@ export const useUploadQueue = (
   });
 
   // ---------- 5) enqueuePendingIds ----------
+  // can't push all PENDING IDs tasksRef duplicate issue
   const enqueuePendingIds = useCallback(() => {
     const cur = queueRef.current;
     const pending = cur.filter((p) => p.status === "PENDING").map((p) => p.id);
