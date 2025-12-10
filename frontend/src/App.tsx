@@ -1,8 +1,11 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./modules/auth/LoginPage";
-import UploadPage from "./modules/uploads/UploadPage";
 import AppLayout from "./components/AppLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { CircularProgress, Box } from "@mui/material";
+
+const UploadPage = lazy(() => import("./modules/uploads/UploadPage"));
 
 export default function App() {
   return (
@@ -13,7 +16,20 @@ export default function App() {
           path="/upload"
           element={
             <ProtectedRoute>
-              <UploadPage />
+              <Suspense
+                fallback={
+                  <Box
+                    display="flex"
+                    justifyContent="center"
+                    alignItems="center"
+                    height="100vh"
+                  >
+                    <CircularProgress />
+                  </Box>
+                }
+              >
+                <UploadPage />
+              </Suspense>
             </ProtectedRoute>
           }
         />
