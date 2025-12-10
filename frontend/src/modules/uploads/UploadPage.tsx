@@ -1,6 +1,6 @@
 import { lazy, useEffect, useState, useCallback } from "react";
 import { Box, Button, Snackbar, Alert } from "@mui/material";
-import { useUploadQueue } from "./useUploadQueue";
+import { useUploadQueue } from "../../hooks/useUploadQueue";
 import { FileUploadDropZone } from "./FileUploadDropZone";
 import { UploadFileList } from "./UploadFileList";
 import { ConcurrencyDisplay } from "./ConcurrencyDisplay";

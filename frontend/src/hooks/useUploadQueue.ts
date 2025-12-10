@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import type { UploadItem } from "../../types";
+import type { UploadItem } from "../types";
 import { useUploadMutation } from "./useUploadMutation";
 
 // Allowed file types & limits

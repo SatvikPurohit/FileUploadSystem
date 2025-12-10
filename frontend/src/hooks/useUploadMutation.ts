@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { AxiosProgressEvent } from "axios";
-import axios from "../../api/axiosSetup";
-import type { UploadItem } from "../../types";
+import axios from "../api/axiosSetup";
+import type { UploadItem } from "../types";
 
 type MutVars = { item: UploadItem; signal?: AbortSignal };
 type UploadResult = unknown;
