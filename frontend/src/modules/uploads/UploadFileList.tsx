@@ -29,6 +29,8 @@ export const UploadFileList = ({
   onRemove,
   onCancel,
 }: UploadFileListProps) => {
+  
+  // start displaying pending items from state queue before upload api
   return (
     <List>
       {queue.map((it) => (

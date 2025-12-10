@@ -9,8 +9,11 @@ interface ConcurrencyDisplayProps {
 
 export const ConcurrencyDisplay = ({ queue }: ConcurrencyDisplayProps) => {
   const uploadingItems = queue.filter((it) => it.status === "UPLOADING");
-  const pendingItems = queue.filter((it) => it.status === "PENDING");
+  const pendingItems = queue.filter((it) => it.status === "PENDING"); // Remove failed
 
+// filter failed items
+// Display pending items before upload api
+// uploading items up to concurrency limit
   return (
     <Box sx={{ mt: 2, mb: 2 }}>
       <Typography variant="subtitle2">

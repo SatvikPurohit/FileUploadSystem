@@ -28,27 +28,22 @@ interface UseUploadQueueReturn {
 export const useUploadQueue = (
   onSnackbar: (msg: string, severity: "success" | "error" | "info") => void
 ): UseUploadQueueReturn => {
-  const [queue, setQueue] = useState<UploadItem[]>([]);
-
-  // store file objects out-of-state
-  const fileMap = useRef<Map<string, File>>(new Map());
-  // keep a ref of queue for worker/reads
+  const [queue, setQueue] = useState<UploadItem[]>([]); // [ {A: CANCELLED}, {B: PENDING}, {C: PENDING} ]: main upload queue state with file descriptions and id
   const queueRef = useRef<UploadItem[]>(queue);
   useEffect(() => {
     queueRef.current = queue;
-  }, [queue]);
+  }, [queue]); // exact copy of queue for startWorker and mutation handler hook
+  const fileMap = useRef<Map<string, File>>(new Map()); // map of queue item id to File(from queue) objects for ?
 
-  // final guard: ensure id isn't started twice
-  const activeIdsRef = useRef<Set<string>>(new Set());
-  // count of active uploads
-  const activeCountRef = useRef(0);
-  // tasks queue (ids)
-  const tasksRef = useRef<string[]>([]);
-  const workerRunningRef = useRef(false);
+  const activeIdsRef = useRef<Set<string>>(new Set()); // {}   // A removed or  {A} UPLOADING
+  const activeCountRef = useRef(0); // UPLOADING status objects count
+  const tasksRef = useRef<string[]>([]); // []. No uploads to start. ['B','C']
+  const workerRunningRef = useRef(false); // to keep track of one task or bundle of files getting uploaded in loop
 
-  // helper to update queue atomically and avoid creating new array if identical
   const updateQueue = useCallback(
     (updater: (prev: UploadItem[]) => UploadItem[]) => {
+      // accepts callbackk to update as needed
+
       setQueue((prev) => {
         const next = updater(prev);
         if (prev.length === next.length && next.every((n, i) => n === prev[i]))
@@ -82,6 +77,7 @@ export const useUploadQueue = (
       activeCountRef.current = Math.max(0, activeCountRef.current - 1);
       activeIdsRef.current.delete(itemId);
       startWorker();
+
       if (item) {
         onSnackbar(`Uploaded ${item.fileName}`, "success");
       }
@@ -101,6 +97,7 @@ export const useUploadQueue = (
       );
       activeCountRef.current = Math.max(0, activeCountRef.current - 1);
       activeIdsRef.current.delete(itemId);
+
       startWorker();
       if (item) {
         onSnackbar(`Failed ${item.fileName}`, "error");
@@ -122,6 +119,7 @@ export const useUploadQueue = (
     const cur = queueRef.current;
     const pending = cur.filter((p) => p.status === "PENDING").map((p) => p.id);
     const set = new Set(tasksRef.current);
+
     pending.forEach((id) => {
       if (!set.has(id)) {
         tasksRef.current.push(id);
@@ -199,7 +197,9 @@ export const useUploadQueue = (
         const id =
           (globalThis as any).crypto?.randomUUID?.() ??
           String(Date.now()) + Math.random().toString(36).slice(2, 8);
+        // maintai file map for faster lookup and light state
         fileMap.current.set(id, f);
+        // type out 3 allowed
         if (!ALLOWED.includes(f.type)) {
           return {
             id,
@@ -210,6 +210,7 @@ export const useUploadQueue = (
             error: "Invalid file type",
           } as UploadItem;
         }
+        // if size exceeds
         if (f.size > MAX_BYTES) {
           return {
             id,
@@ -220,6 +221,7 @@ export const useUploadQueue = (
             error: "File exceeds 10MB",
           } as UploadItem;
         }
+
         return {
           id,
           fileName: f.name,
@@ -245,6 +247,7 @@ export const useUploadQueue = (
       const wasUploading = queueRef.current.some(
         (it) => it.id === id && it.status === "UPLOADING"
       );
+
       if (wasUploading) {
         activeCountRef.current = Math.max(0, activeCountRef.current - 1);
       }

@@ -19,10 +19,12 @@ export const useUploadMutation = ({
   onError,
   fileMap,
 }: UseUploadMutationProps) => {
+  // api call used via mutation
   const uploadSingle = async (
     item: UploadItem,
     signal?: AbortSignal
   ): Promise<UploadResult> => {
+    
     const file = fileMap.current.get(item.id);
     if (!file) throw new Error("File not found");
 
