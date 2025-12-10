@@ -19,8 +19,6 @@ interface UseUploadQueueReturn {
   removeItem: (id: string) => void;
   cancelAll: () => void;
   clearCompleted: () => void;
-  pendingCount: number;
-  uploadingCount: number;
   successCount: number;
   hasCancellable: boolean;
 }
@@ -341,8 +339,6 @@ export const useUploadQueue = (
     removeItem,
     cancelAll,
     clearCompleted,
-    pendingCount,
-    uploadingCount,
     successCount,
     hasCancellable,
   };

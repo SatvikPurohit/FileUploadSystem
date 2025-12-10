@@ -30,8 +30,6 @@ export default function UploadPage() {
     removeItem,
     cancelAll,
     clearCompleted,
-    pendingCount,
-    uploadingCount,
     successCount,
     hasCancellable,
   } = useUploadQueue(handleSnackbar);
