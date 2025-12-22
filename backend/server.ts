@@ -28,7 +28,7 @@ export async function createServer() {
     },
   });
 
-  // register auth plugin
+  // plugin: register auth plugin
   await server.register(hapiAuthJwt2 as any);
 
   // jwt strategy: validate must NOT read request.payload
@@ -44,6 +44,7 @@ export async function createServer() {
     return { isValid, credentials };
   };
 
+  // JWT decode
   server.auth.strategy("jwt", "jwt", {
     key: JWT_SECRET,
     validate,
@@ -52,6 +53,7 @@ export async function createServer() {
   } as any);
 
   // register your app routes
+  // Hapi uses server.route() to map URLs to handlers.
   server.route(await registerRoutes());
 
   // helpful debug: print routes after registration
@@ -70,6 +72,9 @@ export async function createServer() {
     );
   });
 
+  // Each incoming request passes through the request lifecycle.
+  // the request path and method can be modified via the request.setUrl() and request.setMethod() methods.
+  // Changes to the request path or method will impact how the request is routed and can be used for rewrite rules.
   server.ext("onRequest", (request, h) => {
     console.log("Incoming Request Headers:", request.headers);
     console.log(
@@ -77,16 +82,19 @@ export async function createServer() {
       request.headers["content-type"]
     );
     console.log("Incoming Content-Length:", request.headers["content-length"]);
-    return h.continue;
+    return h.continue; //
   });
 
   // log boom stacks on response
+  // onPreResponse: always called, unless the request is aborted.
+  // the response contained in request.response may be modified (but not assigned a new value).
+  // To return a different response type (for example, replace an error with an HTML response)
   server.ext("onPreResponse", (request, h) => {
     const response = request.response as any;
     if (response && response.isBoom) {
       console.error("Boom response:", response?.stack || response);
     }
-    return h.continue;
+    return h.continue; //
   });
 
   await server.start();

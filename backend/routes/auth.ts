@@ -39,6 +39,7 @@ const routes: ServerRoute[] = [
         },
       },
     },
+    // Handlers can be separated
     handler: async (request, h) => {
       // read refresh_token cookie
       const refreshToken = (request.state as any)?.refresh_token;
